@@ -1,8 +1,9 @@
-#include "fifo.h"
 #include <stdio.h>
 #include <pthread.h>
 #include <stdlib.h>
+#include <assert.h>
 
+#include "fifo.h"
 #include "threads.h"
 
 node_t *node_create(void *data) {
@@ -17,7 +18,7 @@ void node_destroy(node_t *node) {
 }
 
 
-fifo_t *fifo_create() {
+fifo_t *fifo_create(const char *name) {
   fifo_t *fifo = (fifo_t *) malloc( sizeof(fifo_t) );
   fifo->mutex = (pthread_mutex_t*) malloc( sizeof( pthread_mutex_t ) );
   fifo->wait = (pthread_cond_t*) malloc( sizeof( pthread_cond_t ) );
@@ -32,12 +33,14 @@ fifo_t *fifo_create() {
 // Push a new item into the fifo
 void fifo_push_internal( fifo_t *fifo, node_t *node ) {
   dna_mutex_lock( fifo->mutex );
-  if (fifo->current) {
-    fifo->current->next = node;
-  }
-  fifo->current = node;
-  if ( !fifo->first ) {
+  assert( node != NULL );
+  if ( fifo_is_empty( fifo ) ) {
     fifo->first = node;
+    fifo->current = fifo->first;
+  }
+  else if ( fifo->current ) {
+    fifo->current->next = node;
+    fifo->current = node;
   }
   fifo->size ++;
   dna_cond_signal( fifo->wait );
@@ -48,17 +51,28 @@ void fifo_push_internal( fifo_t *fifo, node_t *node ) {
 node_t *fifo_pop_internal( fifo_t *fifo ) {
   node_t *node = NULL;
   dna_mutex_lock( fifo->mutex );
-  if (fifo->size == 0) {
-    // unlock and then wait to be signalled
+  int cond_tries = 0;
+  while ( fifo_is_empty(fifo) ) {
+    cond_tries ++;
+    printf("[%i, %lu] fifo %s still empty, waiting for signal\n",
+        cond_tries, fifo->size, fifo->name );
+    // unlock and then wait to be signalled - this is a cancellation point
     dna_cond_wait( fifo->wait, fifo->mutex );
+    if ( fifo_is_empty(fifo) ) {
+      printf("[<%i>] predicate is still null! Spurious wakeup?\n", cond_tries);
+      continue;
+    }
   }
-  if (fifo->first) {
-    node = fifo->first;
-    fifo->first = node->next;
-    fifo->size--;
-  }
+  assert( !fifo_is_empty(fifo) );
+  node = fifo->first;
+  fifo->first = node->next; // even if it's NULL (end of the list)
+  fifo->size --;
   dna_mutex_unlock( fifo->mutex );
   return node;
+}
+
+int fifo_is_empty( fifo_t *fifo ) {
+  return fifo->first == NULL;
 }
 
 void fifo_push( fifo_t * fifo, void * item ) {
@@ -73,6 +87,7 @@ void * fifo_pop( fifo_t *fifo ) {
   return data;
 }
 
+// locks
 long fifo_count( fifo_t *fifo ) {
   long count = 0;
   dna_mutex_lock( fifo->mutex );
@@ -88,7 +103,6 @@ long fifo_count( fifo_t *fifo ) {
 void fifo_empty( fifo_t *fifo ) {
   dna_mutex_lock( fifo->mutex );
   while( fifo->first ) {
-    printf("size: %lu\n", fifo_count( fifo ) );
     node_t *node = fifo_pop_internal( fifo );
     if(node) {
       node_destroy( node );
@@ -97,13 +111,8 @@ void fifo_empty( fifo_t *fifo ) {
   dna_mutex_unlock( fifo->mutex );
 }
 
-int fifo_is_empty( fifo_t *fifo ) {
-  return fifo->size == 0;
-}
-
 void fifo_destroy( fifo_t *fifo ) {
   if (fifo) {
-    // empty the fifo
     fifo_empty( fifo );
     dna_cond_destroy( fifo->wait );
     dna_mutex_destroy( fifo->mutex );
