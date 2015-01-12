@@ -20,7 +20,7 @@ typedef struct {
 
 static int thread_counter = 0;
 
-#define ELEMS 10000
+#define ELEMS 100
 
 void *fifo_fill( void *nothing ) {
   printf("adding %i value elements to the fifo\n", ELEMS);
@@ -67,8 +67,8 @@ int main(int argc, char *argv[]) {
   }
 
   printf("Counted %i elements popped from value queue\n", ctr);
-  fifo_destroy( fifo );
 
+  fifo_destroy( fifo );
   return 0;
 }
 

@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include <pthread.h>
 
 #include "threads.h"
@@ -28,14 +29,21 @@ void dna_cond_broadcast( pthread_cond_t *cond ) {
 }
 
 void dna_cond_destroy( pthread_cond_t *cond ) {
-  pthread_cond_destroy( cond );
+  int code = 0;
+  while( (code = pthread_cond_destroy( cond )) ) {
+    if (code == 16 /*EBUSY*/) {
+      printf("Couldn't destory cond variable - was EBUSY. Trying again...\n");
+    } else {
+      printf("Couldn't destory cond variable (code %i)\n", code);
+    }
+  }
 }
 
-void dna_mutex_init ( pthread_mutex_t *mutex ) {
+void dna_mutex_init( pthread_mutex_t *mutex ) {
   pthread_mutex_init( mutex, NULL );
 }
 
-void dna_mutex_destroy ( pthread_mutex_t *mutex ) {
+void dna_mutex_destroy( pthread_mutex_t *mutex ) {
   if (mutex) {
     pthread_mutex_destroy( mutex );
   }

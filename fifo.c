@@ -100,17 +100,15 @@ long fifo_count( fifo_t *fifo ) {
   return count;
 }
 
+// This needs to clean up the data for the
+// consumer, or allow a callback to do so
 void fifo_empty( fifo_t *fifo ) {
-  dna_mutex_lock( fifo->mutex );
-  while( fifo->first ) {
-    node_t *node = fifo_pop_internal( fifo );
-    if(node) {
-      node_destroy( node );
-    }
+  while( !fifo_is_empty( fifo ) ) {
+    fifo_pop( fifo );
   }
-  dna_mutex_unlock( fifo->mutex );
 }
 
+// Clean up after and free a fifo
 void fifo_destroy( fifo_t *fifo ) {
   if (fifo) {
     fifo_empty( fifo );
