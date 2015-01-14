@@ -7,4 +7,10 @@ void log_count() {
   printf("dbg counter %i\n", ++dbg_counter);
 }
 
+/*
+void log(const char * msg, ...) {
+  printf("test ", va_args);
+}
+*/
+
 #endif

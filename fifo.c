@@ -6,20 +6,21 @@
 #include "fifo.h"
 #include "threads.h"
 
-node_t *node_create(void *data) {
-  node_t *node = malloc( sizeof(node_t) );
+node_t *node_create(void *data, long id) {
+  node_t *node = (node_t*) malloc( sizeof(node_t) );
   node->next = NULL;
   node->data = data;
+  node->id = id;
   return node;
 }
 
 void node_destroy(node_t *node) {
-  if (node) { free(node); }
+  if (node) { free( node ); }
 }
-
 
 fifo_t *fifo_create(const char *name) {
   fifo_t *fifo = (fifo_t *) malloc( sizeof(fifo_t) );
+  if (name) fifo->name = name;
   fifo->mutex = (pthread_mutex_t*) malloc( sizeof( pthread_mutex_t ) );
   fifo->wait = (pthread_cond_t*) malloc( sizeof( pthread_cond_t ) );
   dna_mutex_init( fifo->mutex );
@@ -62,6 +63,7 @@ node_t *fifo_pop_internal( fifo_t *fifo ) {
       printf("[<%i>] predicate is still null! Spurious wakeup?\n", cond_tries);
       continue;
     }
+    printf("fifo is empty (%s) spinning...\n", fifo->name);
   }
   assert( !fifo_is_empty(fifo) );
   node = fifo->first;
@@ -75,16 +77,20 @@ int fifo_is_empty( fifo_t *fifo ) {
   return fifo->first == NULL;
 }
 
-void fifo_push( fifo_t * fifo, void * item ) {
-  node_t *node = node_create( item );
+void fifo_push( fifo_t * fifo, void *item, long id ) {
+  node_t *node = node_create( item, id );
   fifo_push_internal( fifo, node );
 }
 
 void * fifo_pop( fifo_t *fifo ) {
   node_t *node = fifo_pop_internal( fifo );
-  void *data = node->data;
-  node_destroy( node );
-  return data;
+  if (node) {
+    void *data = node->data;
+    node_destroy(node);
+    return data;
+  } else {
+    return NULL;
+  }
 }
 
 // locks
@@ -103,17 +109,32 @@ long fifo_count( fifo_t *fifo ) {
 // This needs to clean up the data for the
 // consumer, or allow a callback to do so
 void fifo_empty( fifo_t *fifo ) {
+  dna_mutex_lock( fifo->mutex );
   while( !fifo_is_empty( fifo ) ) {
-    fifo_pop( fifo );
+    node_t *node = fifo->first;
+    if (node) {
+      node_t *next = node->next;
+      node_destroy(node);
+      if (next) {
+        fifo->first = next; // even if it's NULL (end of the list)
+      } else {
+        break;
+      }
+    }
   }
+  fifo->first = NULL;
+  fifo->current = NULL;
+  fifo->size = 0;
+  dna_mutex_unlock( fifo->mutex );
 }
 
 // Clean up after and free a fifo
 void fifo_destroy( fifo_t *fifo ) {
   if (fifo) {
+    printf("destroying fifo %s...\n", fifo->name);
     fifo_empty( fifo );
-    dna_cond_destroy( fifo->wait );
     dna_mutex_destroy( fifo->mutex );
+    dna_cond_destroy( fifo->wait );
     free( fifo->wait );
     free( fifo->mutex );
     free( fifo );

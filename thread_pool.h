@@ -7,6 +7,7 @@
 #include "threads.h"
 
 typedef struct {
+  const char *name;
   fifo_t *tasks;
   fifo_t *thread_queue;
 } thread_pool_t;
