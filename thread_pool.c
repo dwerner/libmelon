@@ -7,6 +7,8 @@
 #include "thread_pool.h"
 #include "threads.h"
 
+//#define THREAD_POOL_LOG
+
 typedef struct {
   void* (*func)(void*);
   void *arg;
@@ -62,7 +64,10 @@ void *execute_task_thread_internal( void *args ) {
   while ( !dna_thread_context_should_exit(context) &&
           (task = (task_t*) fifo_pop( tasks ) ) ) {
 
+#ifdef THREAD_POOL_LOG
     printf(">> executing task \n");
+#endif
+
     //void *result =
     // TODO: handle callback?
     task_execute( task );
@@ -101,30 +106,44 @@ execution_args_t *execution_args_create(thread_pool_t *pool, dna_thread_context_
   return args;
 }
 
+/***
+*
+* The thread pool has the property that all the threads will keep running until signalled to quit.
+* This makes 'joining' useless, or rather interruptive. Each thread will join with pthread_exit() once it
+* has completed execution of it's current 'task_t'.
+*/
 void thread_pool_join_all( thread_pool_t *pool ) {
   while (!fifo_is_empty( pool->thread_queue )) {
+    dna_thread_context_t *context = (dna_thread_context_t *) fifo_pop( pool->thread_queue );
+    if (context) {
+      pthread_t *thread = context->thread;
+      dna_thread_context_exit( context );
+      thread_pool_enqueue(pool, NULL, NULL);
+      pthread_join(*thread, NULL);
+      free( thread );
+      dna_thread_context_destroy( context );
+    }
   }
 }
 
 void thread_pool_destroy( thread_pool_t *pool ) {
+#ifdef THREAD_POOL_LOG
   printf("thread_pool_destroy\n");
+#endif
   if ( pool ) {
-    printf("cancelling threads...\n");
-    dna_thread_context_t *context = NULL;
-    while ( !fifo_is_empty( pool->thread_queue )) {
-      context = (dna_thread_context_t*) fifo_pop( pool->thread_queue );
-      dna_thread_context_exit(context);
-      thread_pool_enqueue(pool, NULL, NULL);
-      pthread_detach(context->thread);
-    }
-
+#ifdef THREAD_POOL_LOG
+    printf("telling threads to exit...\n");
+#endif
+    thread_pool_join_all(pool);
+#ifdef THREAD_POOL_LOG
     printf("destroying execution context fifo...\n");
+#endif
     fifo_destroy( pool->thread_queue );
     pool->thread_queue = NULL;
-
+#ifdef THREAD_POOL_LOG
     printf("destroying tasks in fifo...\n");
+#endif
     thread_pool_enqueue(pool, NULL, NULL);
-
     if ( fifo_is_empty( pool->tasks ) ) {
       thread_pool_enqueue(pool, NULL, NULL);
       task_t *task = (task_t*) fifo_pop( pool->tasks );
@@ -133,8 +152,9 @@ void thread_pool_destroy( thread_pool_t *pool ) {
 
     fifo_destroy( pool->tasks );
     pool->tasks = NULL;
-
+#ifdef THREAD_POOL_LOG
     printf("freeing context pool : (%s).\n", pool->name);
+#endif
     free( pool );
   }
 }
@@ -145,7 +165,9 @@ void thread_pool_enqueue_task( thread_pool_t *pool, task_t *task ) {
 }
 
 void thread_pool_enqueue( thread_pool_t *pool, void*(*func)(void*), void *arg) {
+#ifdef THREAD_POOL_LOG
   printf("<< enqueuing task\n");
+#endif
   task_t *task = task_create( func, arg );
   thread_pool_enqueue_task( pool, task );
 }

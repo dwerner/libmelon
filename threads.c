@@ -36,7 +36,7 @@ int dna_thread_context_should_exit(dna_thread_context_t *context) {
 
 void dna_thread_context_destroy(dna_thread_context_t *context) {
   if (context) {
-//    free(context->thread); // should we ?
+//    free(context->thread); // TODO: should we ?
     dna_mutex_destroy(context->mutex);
     free(context);
   }

@@ -20,8 +20,12 @@ void fifo_check();
 
 void sleep_for(long seconds);
 
-#define ELEMS 10
-#define VALUE_LOG
+void test_empty_thread_pool();
+
+void test_empty_fifo();
+
+#define ELEMS 1000
+//#define VALUE_LOG
 //#define SLEEPAFTER
 
 void *fifo_fill( void *nothing ) {
@@ -63,30 +67,68 @@ void sleep_for(long seconds) {
   nanosleep(&interval, NULL);
 }
 
-int main(int argc, char *argv[]) {
+void test_empty_fifo() {
+  printf( "<-------------------- test_empty_fifo ---------------------\n");
   int j = 0;
-
   for (j = 0; j < 10; j++) {
     fifo_t *fifo = fifo_create("<test fifo>");
     fifo_destroy(fifo);
   }
+}
 
-  for (j = 0; j < 100 ; j++ ) {
-    printf("--- cycle %i\n", j);
+void test_fifo() {
+  printf( "<-------------------- test_fifo ---------------------\n");
+  int j = 0;
+  for (j = 0; j < 10; j++) {
+    fifo_t *fifo = fifo_create("<test fifo>");
+
+    fifo_destroy(fifo);
+  }
+}
+
+void test_empty_thread_pool() {
+  printf( "<-------------------- test_empty_thread_pool ---------------------\n");
+  int i = 0;
+  for (i = 0; i < 10 ; i++ ) {
+    printf(">> --- cycle %i --- <<\n", i+1);
+    // global here, for all threads to share
     fifo = fifo_create("values");
     printf("starting thread pool\n");
     thread_pool_t *pool = thread_pool_create("main pool", 1);
-#ifdef SLEEPAFTER
-    long seconds = 2;
-    sleep_for(seconds);
-#endif
     printf("destroying thread pool\n");
     thread_pool_destroy(pool);
     fifo_check();
     fifo_destroy(fifo);
   }
+}
+
+void test_busy_thread_pool() {
+  printf( "<-------------------- test_busy_thread_pool  ---------------------\n");
+  fifo = fifo_create("<(busy_thread_pool) value fifo>");
+  thread_pool_t *pool = thread_pool_create("<busy thread pool>", 8); // should auto-determine thread count maybe?
+  printf("adding %i tasks to the queue...\n", ELEMS);
+  int i = 0;
+  for( i = 0; i < ELEMS; i++ ) {
+    thread_pool_enqueue(pool, &fifo_fill, NULL);
+  }
+  printf("waiting for threads to complete on their own...\n");
+  thread_pool_join_all( pool );
+  printf("destroying thread pool...\n");
+  thread_pool_destroy( pool );
+
+  test_fifo();
+  printf("destroying global value fifo.\n");
+  fifo_destroy( fifo );
+}
+
+int main(int argc, char *argv[]) {
+  test_empty_fifo();
+  test_fifo();
+  test_empty_thread_pool();
+  test_busy_thread_pool();
   return 0;
 }
+
 
 
 
