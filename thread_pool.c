@@ -7,7 +7,7 @@
 #include "thread_pool.h"
 #include "threads.h"
 
-//#define THREAD_POOL_LOG
+#define THREAD_POOL_LOG
 
 typedef struct {
   void* (*func)(void*);
@@ -27,7 +27,7 @@ task_t *task_create( void*(*func)(void*), void *arg ) {
   task->arg = arg;
   return task;
 }
-// explicity allows null func+args. Null tasks are useful to unblock the queue
+
 void *task_execute( task_t *task ) {
   // Explicitly mark this as a cancellation point.
   void* (*func)(void*) = task->func;
