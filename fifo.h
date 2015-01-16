@@ -3,10 +3,6 @@
 
 #include <pthread.h>
 
-typedef struct node_def {
-  struct node_def *next;
-  void * data;
-} node_t;
 
 typedef struct {
   const char *name;

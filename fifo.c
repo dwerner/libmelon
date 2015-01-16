@@ -6,12 +6,29 @@
 #include "fifo.h"
 #include "threads.h"
 
+// TODO:
+// | Optimizations |
+// - implement an optional size limit for fifo_t
+//   - add pthread_cond_t to fifo_t -> wait_room
+//   - push would then block if there is no room, and pop would signal that
+//
+// - implement a preallocated region of memory to start with for node_t instances
+//   - add recycling of node_t, rather than malloc + free each time.
+
+typedef struct node_def {
+  struct node_def *next;
+  void * data;
+} node_t;
+
 node_t *node_create( void *data ) {
   node_t *node = (node_t*) malloc( sizeof(node_t) );
   node->next = NULL;
   node->data = data;
   return node;
 }
+
+// node_t *node_get_from_pool()
+// void node_return_to_pool()
 
 void node_destroy( node_t *node ) {
   if (node) { free( node ); }
