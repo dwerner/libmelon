@@ -27,6 +27,8 @@ typedef struct {
 node_t *node_create( void *data, long id );
 void node_destroy( node_t *node );
 void * fifo_pop( fifo_t *fifo );
+int fifo_any( fifo_t *fifo, int(*predicate)(const void*) );
+void fifo_each(fifo_t *fifo, void(*func)(void *) );
 void fifo_empty( fifo_t *fifo );
 int fifo_is_empty( fifo_t *fifo );
 void fifo_destroy( fifo_t *fifo );

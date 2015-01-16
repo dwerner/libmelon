@@ -106,6 +106,18 @@ execution_args_t *execution_args_create(thread_pool_t *pool, dna_thread_context_
   return args;
 }
 
+
+// Threads are killed from within
+void kill_thread(void *arg) {
+  dna_thread_context_t *context = (dna_thread_context_t *) arg;
+  dna_thread_context_exit(context);
+}
+
+int context_is_running(const void *arg ) {
+  dna_thread_context_t *context = (dna_thread_context_t*) arg;
+  return context->runstate == RUNNING;
+}
+
 /***
 *
 * The thread pool has the property that all the threads will keep running until signalled to quit.
@@ -113,18 +125,23 @@ execution_args_t *execution_args_create(thread_pool_t *pool, dna_thread_context_
 * has completed execution of it's current 'task_t'.
 */
 void thread_pool_join_all( thread_pool_t *pool ) {
-  while (!fifo_is_empty( pool->thread_queue )) {
-    dna_thread_context_t *context = (dna_thread_context_t *) fifo_pop( pool->thread_queue );
-    if (context) {
-      pthread_t *thread = context->thread;
-      dna_thread_context_exit( context );
-      thread_pool_enqueue(pool, NULL, NULL);
-      pthread_join(*thread, NULL);
-      free( thread );
-      dna_thread_context_destroy( context );
+  fifo_empty(pool->tasks);
+  fifo_each( pool->thread_queue, &kill_thread ); // mark set each thread to quit (TODO: move to threads.c
+  printf("joining thread pool:\n");
+  while ( !fifo_is_empty(pool->thread_queue) ) {
+    dna_thread_context_t *context = (dna_thread_context_t*) fifo_pop( pool->thread_queue );
+    if (context->runstate == RUNNING) {
+      printf("context is still running, placing back in the queue.\n");
+      fifo_push(pool->thread_queue, context, 0);
+    }
+    else {
+      pthread_join(*context->thread, NULL);
+      dna_thread_context_destroy(context);
     }
   }
+  printf("thread pool joined\n");
 }
+
 
 void thread_pool_destroy( thread_pool_t *pool ) {
 #ifdef THREAD_POOL_LOG
@@ -143,9 +160,7 @@ void thread_pool_destroy( thread_pool_t *pool ) {
 #ifdef THREAD_POOL_LOG
     printf("destroying tasks in fifo...\n");
 #endif
-    thread_pool_enqueue(pool, NULL, NULL);
     if ( fifo_is_empty( pool->tasks ) ) {
-      thread_pool_enqueue(pool, NULL, NULL);
       task_t *task = (task_t*) fifo_pop( pool->tasks );
       task_destroy( task );
     }

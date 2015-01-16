@@ -128,6 +128,33 @@ void fifo_empty( fifo_t *fifo ) {
   dna_mutex_unlock( fifo->mutex );
 }
 
+int fifo_any( fifo_t *fifo, int(*predicate)(const void*) ) {
+  dna_mutex_lock(fifo->mutex);
+  if ( predicate ) {
+    node_t *head = fifo->first;
+    while( head ) {
+      int result = predicate((const void *) head->data);
+      if (result) break;
+      head = head->next;
+    }
+  }
+  dna_mutex_unlock(fifo->mutex);
+  return 0;
+}
+
+void fifo_each(fifo_t *fifo, void(*func)(void *) ) {
+  dna_mutex_lock(fifo->mutex);
+  if ( func ) {
+    node_t *head = fifo->first;
+    while( head ) {
+      func( head->data );
+      head = head->next;
+    }
+  }
+  dna_mutex_unlock(fifo->mutex);
+}
+
+
 // Clean up after and free a fifo
 void fifo_destroy( fifo_t *fifo ) {
   if (fifo) {

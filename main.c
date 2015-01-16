@@ -116,7 +116,26 @@ void test_busy_thread_pool() {
   printf("destroying thread pool...\n");
   thread_pool_destroy( pool );
 
-  test_fifo();
+  fifo_check();
+  printf("destroying global value fifo.\n");
+  fifo_destroy( fifo );
+}
+
+void test_few_tasks_thread_pool() {
+  printf( "<-------------------- test_few_tasks_thread_pool  ---------------------\n");
+  fifo = fifo_create("<(busy_thread_pool) value fifo>");
+  thread_pool_t *pool = thread_pool_create("<few tasks thread pool>", 8); // should auto-determine thread count maybe?
+  printf("adding %i tasks to the queue...\n", ELEMS);
+  int i = 0;
+  for( i = 0; i < 1; i++ ) {
+    thread_pool_enqueue(pool, &fifo_fill, NULL);
+  }
+  printf("waiting for threads to complete on their own...\n");
+  thread_pool_join_all( pool );
+  printf("destroying thread pool...\n");
+  thread_pool_destroy( pool );
+
+  fifo_check();
   printf("destroying global value fifo.\n");
   fifo_destroy( fifo );
 }
@@ -126,6 +145,7 @@ int main(int argc, char *argv[]) {
   test_fifo();
   test_empty_thread_pool();
   test_busy_thread_pool();
+  test_few_tasks_thread_pool();
   return 0;
 }
 
