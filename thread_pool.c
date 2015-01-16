@@ -34,7 +34,6 @@ execution_args_t *execution_args_create(thread_pool_t *pool, dna_thread_context_
 }
 
 void *task_execute( task_t *task ) {
-  // Explicitly mark this as a cancellation point.
   void* (*func)(void*) = task->func;
   void *arg = task->arg;
   void *result = NULL;
@@ -53,11 +52,10 @@ void task_destroy( task_t *task ) {
 }
 
 /**
-* Until cancellation, pull a task_t out of the task queue and run it on our thread
+* Until pthread_exit, pull a task_t out of the task queue and run it on our thread
 */
 void *execute_task_thread_internal( void *args ) {
 
-  // threads within the pool must be cancellable.
   pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
   pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, NULL);
 
@@ -104,10 +102,8 @@ thread_pool_t *thread_pool_create( const char *name, int thread_count ) {
   return pool;
 }
 
-// Threads are killed from within
 void kill_thread(void *arg) {
   dna_thread_context_t *context = (dna_thread_context_t *) arg;
-  // Mark the thread context so it will call pthread_exit when it has awoken
   dna_thread_context_exit(context);
 }
 
