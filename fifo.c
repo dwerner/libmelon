@@ -6,19 +6,18 @@
 #include "fifo.h"
 #include "threads.h"
 
-node_t *node_create(void *data, long id) {
+node_t *node_create( void *data ) {
   node_t *node = (node_t*) malloc( sizeof(node_t) );
   node->next = NULL;
   node->data = data;
-  node->id = id;
   return node;
 }
 
-void node_destroy(node_t *node) {
+void node_destroy( node_t *node ) {
   if (node) { free( node ); }
 }
 
-fifo_t *fifo_create(const char *name) {
+fifo_t *fifo_create( const char *name ) {
   fifo_t *fifo = (fifo_t *) malloc( sizeof(fifo_t) );
   if (name) fifo->name = name;
   fifo->mutex = (pthread_mutex_t*) malloc( sizeof( pthread_mutex_t ) );
@@ -77,8 +76,8 @@ int fifo_is_empty( fifo_t *fifo ) {
   return fifo->first == NULL;
 }
 
-void fifo_push( fifo_t * fifo, void *item, long id ) {
-  node_t *node = node_create( item, id );
+void fifo_push( fifo_t * fifo, void *item ) {
+  node_t *node = node_create( item );
   fifo_push_internal( fifo, node );
 }
 

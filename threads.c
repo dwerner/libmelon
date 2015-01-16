@@ -25,7 +25,6 @@ void dna_thread_context_exit(dna_thread_context_t *context) {
   dna_mutex_unlock(context->mutex);
 }
 
-
 int dna_thread_context_should_exit(dna_thread_context_t *context) {
   int should_exit = 0;
   dna_mutex_lock(context->mutex);
@@ -36,7 +35,7 @@ int dna_thread_context_should_exit(dna_thread_context_t *context) {
 
 void dna_thread_context_destroy(dna_thread_context_t *context) {
   if (context) {
-//    free(context->thread); // TODO: should we ?
+    free(context->thread);    
     dna_mutex_destroy(context->mutex);
     free(context);
   }
@@ -115,6 +114,7 @@ void dna_thread_cancel( pthread_t *thread ) {
     printf("thread cancellation failed: %i, trying again...\n", i);
   }
 }
+
 void dna_thread_detach( pthread_t *thread ) {
   int i = 0;
   while( (i = pthread_detach(*thread)) ){

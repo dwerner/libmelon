@@ -5,7 +5,7 @@
 #include <stdlib.h>
 
 typedef enum {
-  IDLE=0,
+  IDLE = 0,
   RUNNING,
   SHOULD_QUIT,
   HAS_QUIT

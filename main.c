@@ -35,10 +35,12 @@ void *fifo_fill( void *nothing ) {
     message_t *val = (message_t*) malloc( sizeof(message_t) );
     val->id = cap;
     val->value = i;
-    fifo_push( fifo, val, 0 );
+    fifo_push( fifo, val );
+
 #ifdef VALUE_LOG
     printf("<< added %i to value fifo\n", i);
 #endif
+
   }
   return NULL;
 }
