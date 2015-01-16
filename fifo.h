@@ -3,14 +3,20 @@
 
 #include <pthread.h>
 
+typedef struct node_def {
+  struct node_def *next;
+  void * data;
+} node_t;
 
 typedef struct {
   const char *name;
   long size;
   node_t *first;
   node_t *current;
-  pthread_cond_t *wait;
+  pthread_cond_t *wait_pop;
+  pthread_cond_t *wait_push;
   pthread_mutex_t *mutex;
+  node_t *node_list;
 } fifo_t;
 
 void*fifo_pop( fifo_t *fifo );
