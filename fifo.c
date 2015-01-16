@@ -26,6 +26,7 @@ node_t *node_create( void *data ) {
 }
 
 
+// In progress - node caching
 node_t *node_cache_pop( fifo_t *fifo ) {
   if (fifo->node_cache) {
     node_t *item = fifo->node_cache;
@@ -64,7 +65,7 @@ fifo_t *fifo_create( const char *name, long max_size ) {
   fifo->mutex = (pthread_mutex_t*) malloc( sizeof( pthread_mutex_t ) );
   fifo->wait_pop = (pthread_cond_t*) malloc( sizeof( pthread_cond_t ) );
 
-  // IN PROGRESS - implementation of size limitation and node caching
+  /*// IN PROGRESS - implementation of size limitation and node caching
   long preallocated_nodes = max_size ? max_size : NODE_CACHE_SIZE;
   node_t *node_list = (node_t*) malloc( sizeof(node_t) * preallocated_nodes );
   node_t *iterator = node_list;
@@ -80,6 +81,7 @@ fifo_t *fifo_create( const char *name, long max_size ) {
     fifo->wait_push = (pthread_cond_t*) malloc( sizeof( pthread_cond_t ) );
     dna_cond_init( fifo->wait_push );
   }
+  */
 
   dna_mutex_init( fifo->mutex );
   dna_cond_init( fifo->wait_pop );
@@ -115,7 +117,11 @@ node_t *fifo_pop_internal( fifo_t *fifo ) {
     cond_tries ++;
     printf("[%i, %lu] fifo %s still empty, waiting for signal\n",
         cond_tries, fifo->size, fifo->name );
+
     // unlock and then wait to be signalled - this is a cancellation point
+    // the challenge is: if we don't break out of this other than when
+    // there is an item in the queue, we will block for destroy...
+    // So we should push a NULL task.
     dna_cond_wait( fifo->wait_pop, fifo->mutex );
     if ( fifo_is_empty(fifo) ) {
       printf("[<%i>] predicate is still null! Spurious wakeup?\n", cond_tries);
@@ -140,7 +146,7 @@ void fifo_push( fifo_t * fifo, void *item ) {
   fifo_push_internal( fifo, node );
 }
 
-void * fifo_pop( fifo_t *fifo ) {
+void *fifo_pop( fifo_t *fifo ) {
   node_t *node = fifo_pop_internal( fifo );
   if (node) {
     void *data = node->data;

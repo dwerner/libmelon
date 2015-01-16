@@ -73,7 +73,7 @@ void test_empty_fifo() {
   printf( "<-------------------- test_empty_fifo ---------------------\n");
   int j = 0;
   for (j = 0; j < 10; j++) {
-    fifo_t *fifo = fifo_create("<test fifo>");
+    fifo_t *fifo = fifo_create(" <test fifo>", 0);
     fifo_destroy(fifo);
   }
 }
@@ -82,7 +82,7 @@ void test_fifo() {
   printf( "<-------------------- test_fifo ---------------------\n");
   int j = 0;
   for (j = 0; j < 10; j++) {
-    fifo_t *fifo = fifo_create("<test fifo>");
+    fifo_t *fifo = fifo_create("<test fifo>", 0);
 
     fifo_destroy(fifo);
   }
@@ -94,7 +94,7 @@ void test_empty_thread_pool() {
   for (i = 0; i < 10 ; i++ ) {
     printf(">> --- cycle %i --- <<\n", i+1);
     // global here, for all threads to share
-    fifo = fifo_create("values");
+    fifo = fifo_create("values", 0);
     printf("starting thread pool\n");
     thread_pool_t *pool = thread_pool_create("main pool", 1);
     printf("destroying thread pool\n");
@@ -106,7 +106,7 @@ void test_empty_thread_pool() {
 
 void test_busy_thread_pool() {
   printf( "<-------------------- test_busy_thread_pool  ---------------------\n");
-  fifo = fifo_create("<(busy_thread_pool) value fifo>");
+  fifo = fifo_create("<(busy_thread_pool) value fifo>", 0);
   thread_pool_t *pool = thread_pool_create("<busy thread pool>", 8); // should auto-determine thread count maybe?
   printf("adding %i tasks to the queue...\n", ELEMS);
   int i = 0;
@@ -125,7 +125,7 @@ void test_busy_thread_pool() {
 
 void test_few_tasks_thread_pool() {
   printf( "<-------------------- test_few_tasks_thread_pool  ---------------------\n");
-  fifo = fifo_create("<(busy_thread_pool) value fifo>");
+  fifo = fifo_create("<(busy_thread_pool) value fifo>", 0);
   thread_pool_t *pool = thread_pool_create("<few tasks thread pool>", 8); // should auto-determine thread count maybe?
   printf("adding %i tasks to the queue...\n", ELEMS);
   int i = 0;

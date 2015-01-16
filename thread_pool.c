@@ -7,7 +7,7 @@
 #include "thread_pool.h"
 #include "threads.h"
 
-#define THREAD_POOL_LOG
+//#define THREAD_POOL_LOG
 
 typedef struct {
   void* (*func)(void*);
@@ -113,15 +113,15 @@ int context_is_running(const void *arg ) {
 }
 
 /***
-*
 * The thread pool has the property that all the threads will keep running until signalled to quit.
 * This makes 'joining' useless, or rather interruptive. Each thread will join with pthread_exit() once it
 * has completed execution of it's current 'task_t'.
 */
 void thread_pool_join_all( thread_pool_t *pool ) {
+  // Clear existing work from the queue
   fifo_empty(pool->tasks);
 
-  // mark set each thread to quit (TODO: move to threads.c
+  // mark set each thread to quit (TODO: move to threads.c ?)
   fifo_each( // fo' each haha
       pool->thread_queue,
       &kill_thread
@@ -130,6 +130,14 @@ void thread_pool_join_all( thread_pool_t *pool ) {
 #ifdef THREAD_POOL_LOG
   printf("joining thread pool:\n");
 #endif
+
+  // push new "work" into the queue to unblock threads waiting on the list
+  int x = 0;
+  for ( x = 0; x < fifo_count(pool->thread_queue); x++) {
+    // We guard and don't execute NULL function pointers
+    // This merely meets the needs of the fifo for unblocking.
+    thread_pool_enqueue(pool, NULL, NULL);
+  }
 
   while ( !fifo_is_empty(pool->thread_queue) ) {
     dna_thread_context_t *context = (dna_thread_context_t*) fifo_pop( pool->thread_queue );
@@ -142,15 +150,16 @@ void thread_pool_join_all( thread_pool_t *pool ) {
       fifo_push( pool->thread_queue, context );
     }
     else {
+      // if the context is != RUNNING, it's either SHOULD_QUIT or HAS_QUIT
+      // so we have to rely on the null work we pushed earlier to clear
+      // any blocks
       pthread_join(*context->thread, NULL);
       dna_thread_context_destroy(context);
     }
   }
-
 #ifdef THREAD_POOL_LOG
   printf("thread pool joined\n");
 #endif
-
 }
 
 
