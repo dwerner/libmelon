@@ -16,7 +16,7 @@ typedef struct {
   pthread_cond_t *wait_pop;
   pthread_cond_t *wait_push;
   pthread_mutex_t *mutex;
-  node_t *node_list;
+  node_t *node_cache;
 } fifo_t;
 
 void*fifo_pop( fifo_t *fifo );
@@ -27,6 +27,6 @@ int  fifo_is_empty( fifo_t *fifo );
 void fifo_destroy( fifo_t *fifo );
 long fifo_count( fifo_t *fifo );
 void fifo_push( fifo_t * fifo, void * item );
-fifo_t *fifo_create( const char *name );
+fifo_t *fifo_create( const char *name, long max_size );
 
 #endif

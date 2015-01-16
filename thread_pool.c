@@ -90,8 +90,8 @@ thread_pool_t *thread_pool_create( const char *name, int thread_count ) {
   assert( thread_count > 0 );
   thread_pool_t *pool = (thread_pool_t*) malloc( sizeof( thread_pool_t ) );
   pool->name = name;
-  pool->tasks = fifo_create("(tasks)");
-  pool->thread_queue = fifo_create("(threads)");
+  pool->tasks = fifo_create("(tasks)", 50 );
+  pool->thread_queue = fifo_create("(threads)", thread_count );
   int i = 0;
   for ( i = 0; i < thread_count; i++ ) {
     dna_thread_context_t *context = dna_thread_context_create();

@@ -25,39 +25,62 @@ node_t *node_create( void *data ) {
   return node;
 }
 
-/*
-node_t *node_pool_pop(fifo_t *fifo); // could just be another fifo_t
-void node_pool_push(fifo_t *fifo, node_t *node );
-*/
+
+node_t *node_cache_pop( fifo_t *fifo ) {
+  if (fifo->node_cache) {
+    node_t *item = fifo->node_cache;
+    fifo->node_cache = item->next;
+    item->next = NULL;
+    item->data = NULL;
+    return item;
+  }
+  return NULL;
+}
+
+void node_cache_push( fifo_t *fifo, node_t *node ) {
+  if (node) {
+    node->data = NULL;
+    node->next = NULL;
+    node_t *head = NULL;
+    while ( (head = fifo->node_cache) ) {
+      if (!head->next) {
+        head->next = node;
+      }
+    }
+  }
+}
+
 
 void node_destroy( node_t *node ) {
   if (node) { free( node ); }
 }
 
 
-#define NODE_PREALLOCATED_DEFAULT 50
+#define NODE_CACHE_SIZE 50
 
-fifo_t *fifo_create( const char *name /*, long max_size */ ) {
+fifo_t *fifo_create( const char *name, long max_size ) {
   fifo_t *fifo = (fifo_t *) malloc( sizeof(fifo_t) );
   if (name) fifo->name = name;
   fifo->mutex = (pthread_mutex_t*) malloc( sizeof( pthread_mutex_t ) );
   fifo->wait_pop = (pthread_cond_t*) malloc( sizeof( pthread_cond_t ) );
 
-  /* // IN PROGRESS - implementation of size limitation and node caching
-  long preallocated_nodes = max_size ? max_size : NODE_PREALLOCATED_DEFAULT;
+  // IN PROGRESS - implementation of size limitation and node caching
+  long preallocated_nodes = max_size ? max_size : NODE_CACHE_SIZE;
   node_t *node_list = (node_t*) malloc( sizeof(node_t) * preallocated_nodes );
+  node_t *iterator = node_list;
   long l = 0;
-  for ( l = 0; l < sizeof(node_t) * preallocated_nodes; l += sizeof(node_t) ) {
-
+  for ( l = 0; l < preallocated_nodes; l++ ) {
+    iterator->data = NULL;
+    iterator->next = &node_list[l];
+    iterator = iterator->next;
   }
-
-  fifo->node_list = node_list;
+  fifo->node_cache = node_list;
 
   if (max_size) {
     fifo->wait_push = (pthread_cond_t*) malloc( sizeof( pthread_cond_t ) );
     dna_cond_init( fifo->wait_push );
   }
-  */
+
   dna_mutex_init( fifo->mutex );
   dna_cond_init( fifo->wait_pop );
   fifo->size = 0;
