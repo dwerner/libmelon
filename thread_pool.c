@@ -9,6 +9,7 @@
 
 //#define THREAD_POOL_LOG
 
+
 typedef struct {
   void* (*func)(void*);
   void *arg;
@@ -33,6 +34,7 @@ execution_args_t *execution_args_create(thread_pool_t *pool, dna_thread_context_
   return args;
 }
 
+// Actually execute work from the thread pool.
 void *task_execute( task_t *task ) {
   void* (*func)(void*) = task->func;
   void *arg = task->arg;
@@ -56,9 +58,6 @@ void task_destroy( task_t *task ) {
 */
 void *execute_task_thread_internal( void *args ) {
 
-  pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
-  pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, NULL);
-
   execution_args_t *yargs = (execution_args_t*) args;
   fifo_t *tasks = yargs->task_list;
   dna_thread_context_t *context = yargs->thread_context;
@@ -73,7 +72,9 @@ void *execute_task_thread_internal( void *args ) {
 
     //void *result =
     // TODO: handle callback?
-    task_execute( task );
+    if ( task->func ) { // thread_pool_destroy sends tasks which have NULL members in, don't bother executing it
+      task_execute(task);
+    }
     task_destroy( task );
   }
 
@@ -102,6 +103,7 @@ thread_pool_t *thread_pool_create( const char *name, int thread_count ) {
   return pool;
 }
 
+// used to mark all threads so they will quit
 void kill_thread(void *arg) {
   dna_thread_context_t *context = (dna_thread_context_t *) arg;
   dna_thread_context_exit(context);

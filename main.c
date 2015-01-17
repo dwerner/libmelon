@@ -3,6 +3,10 @@
 #include <stdlib.h>
 #include <unistd.h>
 
+#include "promise.h"
+#include "actor.h"
+#include "actor_system.h"
+
 #include "fifo.h"
 #include "logging.h"
 #include "thread_pool.h"
@@ -12,7 +16,7 @@ static fifo_t *fifo = NULL;
 typedef struct {
   int id;
   int value;
-} message_t;
+} int_message_t;
 
 static int thread_counter = 0;
 
@@ -32,7 +36,7 @@ void *fifo_fill( void *nothing ) {
   int cap = ++thread_counter;
   int i = 0;
   for (i = 0; i < ELEMS; i++) {
-    message_t *val = (message_t*) malloc( sizeof(message_t) );
+    int_message_t *val = (int_message_t*) malloc( sizeof(int_message_t) );
     val->id = cap;
     val->value = i;
     fifo_push( fifo, val );
@@ -142,12 +146,47 @@ void test_few_tasks_thread_pool() {
   fifo_destroy( fifo );
 }
 
+
+// consumer side of actor
+typedef enum {
+  PING = 0,
+  PONG = 1
+} message_type_t;
+
+void *actor_ping_receive( const actor_t *this, const message_t *msg ) {
+  switch( msg->type ) {
+    case PING: {
+      printf("actor: PING\n");
+      return (void*) message_create(NULL, PONG, (void*)this);
+    }
+    default: break;
+  };
+  return NULL;
+}
+
+void test_actor_system() {
+  printf( "<-------------------- test_actor_system  ---------------------\n");
+  actor_system_t *actor_system = actor_system_create("stuff");
+  actor_t *actor = actor_create(&actor_ping_receive, "actor");
+  actor_system_add( actor_system, actor );
+  message_t *message = message_create(NULL, PING, NULL);
+  promise_t *promise = actor_send(actor, message);
+  actor_system_run( actor_system );
+  void *val = promise_get( promise );
+  if (val) {
+    message_t *response = (message_t*)val;
+    printf("resolved promise! %s\n", (response->type == PING ? "PING" : "PONG") );
+  }
+  actor_system_destroy( actor_system );
+}
+
 int main(int argc, char *argv[]) {
   test_empty_fifo();
   test_fifo();
   test_empty_thread_pool();
   test_busy_thread_pool();
   test_few_tasks_thread_pool();
+  test_actor_system();
   return 0;
 }
 
