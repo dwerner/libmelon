@@ -167,7 +167,7 @@ void *actor_ping_receive( const actor_t *this, const message_t *msg ) {
 void test_actor_system() {
   printf( "<-------------------- test_actor_system  ---------------------\n");
   actor_system_t *actor_system = actor_system_create("stuff");
-  actor_t *actor = actor_create(&actor_ping_receive, "actor");
+  actor_t *actor = actor_create(&actor_ping_receive, "actor 1");
   actor_system_add( actor_system, actor );
   message_t *message = message_create(NULL, PING, NULL);
   promise_t *promise = actor_send(actor, message);
