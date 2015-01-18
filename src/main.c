@@ -2,11 +2,11 @@
 #include <pthread.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <check.h>
 
 #include "promise.h"
 #include "actor.h"
 #include "actor_system.h"
-
 #include "fifo.h"
 #include "logging.h"
 #include "thread_pool.h"
@@ -157,6 +157,9 @@ void *actor_ping_receive( const actor_t *this, const message_t *msg ) {
   switch( msg->type ) {
     case PING: {
       printf("actor: PING\n");
+
+      // TODO: would really like to have message->from be actor_t* instead of void*.
+      // This is a problem with circular dependencies of typedefs - figure it out.
       return (void*) message_create(NULL, PONG, (void*)this);
     }
     default: break;
@@ -167,16 +170,27 @@ void *actor_ping_receive( const actor_t *this, const message_t *msg ) {
 void test_actor_system() {
   printf( "<-------------------- test_actor_system  ---------------------\n");
   actor_system_t *actor_system = actor_system_create("stuff");
+
+  // create an actor and add it to the system
   actor_t *actor = actor_create(&actor_ping_receive, "actor 1");
   actor_system_add( actor_system, actor );
+
+  // create a message and send it to the actor, capturing the promise from actor_send
   message_t *message = message_create(NULL, PING, NULL);
   promise_t *promise = actor_send(actor, message);
+
+  // Starts execution of the actor system - enqueueing receive evaluation on an internal thread pool
   actor_system_run( actor_system );
+
+  // block this thread until we can resolve the promise
   void *val = promise_get( promise );
   if (val) {
+    // it happens to be a message created by the actor and returned
     message_t *response = (message_t*)val;
     printf("resolved promise! %s\n", (response->type == PING ? "PING" : "PONG") );
   }
+
+  // stop actor system, internal thread pool, task list, and clean up
   actor_system_destroy( actor_system );
 }
 
