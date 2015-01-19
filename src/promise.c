@@ -26,6 +26,7 @@ promise_t *promise_create_resolved( void *resolved_value ) {
   promise->fifo = NULL;
   promise->state = RESOLVED;
   promise->resolution = resolved_value;
+  return promise;
 }
 
 void promise_chain(promise_t *promise1, promise_t *promise2 ) {
