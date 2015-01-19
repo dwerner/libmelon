@@ -115,19 +115,22 @@ node_t *fifo_pop_internal( fifo_t *fifo ) {
   int cond_tries = 0;
   while ( fifo_is_empty(fifo) ) {
     cond_tries ++;
+#ifdef FIFO_DEBUG
     printf("[%i, %lu] fifo %s still empty, waiting for signal\n",
         cond_tries, fifo->size, fifo->name );
-
+#endif
     // unlock and then wait to be signalled - this is a cancellation point
     // the challenge is: if we don't break out of this other than when
     // there is an item in the queue, we will block for destroy...
     // So we should push a NULL task.
     dna_cond_wait( fifo->wait_pop, fifo->mutex );
-    if ( fifo_is_empty(fifo) ) {
+    if ( !fifo_is_empty(fifo) ) {
+      break;
+    } else {
+#ifdef FIFO_DEBUG
       printf("[<%i>] predicate is still null! Spurious wakeup?\n", cond_tries);
-      continue;
+#endif
     }
-    printf("fifo is empty (%s) spinning...\n", fifo->name);
   }
   assert( !fifo_is_empty(fifo) );
   node = fifo->first;

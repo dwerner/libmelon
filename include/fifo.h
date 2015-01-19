@@ -1,14 +1,16 @@
-#ifndef DNA_FIFO_H
-#define DNA_FIFO_H
+#pragma once
 
 #include <pthread.h>
 
-typedef struct node_def {
-  struct node_def *next;
-  void * data;
-} node_t;
+typedef struct node_t node_t;
+typedef struct fifo_t fifo_t;
 
-typedef struct {
+struct node_t {
+  node_t *next;
+  void * data;
+};
+
+struct fifo_t {
   const char *name;
   long size;
   node_t *first;
@@ -17,7 +19,7 @@ typedef struct {
   pthread_cond_t *wait_push;
   pthread_mutex_t *mutex;
   node_t *node_cache;
-} fifo_t;
+};
 
 void*fifo_pop( fifo_t *fifo );
 int  fifo_any( fifo_t *fifo, int(*predicate)(const void*) );
@@ -28,5 +30,3 @@ void fifo_destroy( fifo_t *fifo );
 long fifo_count( fifo_t *fifo );
 void fifo_push( fifo_t * fifo, void * item );
 fifo_t *fifo_create( const char *name, long max_size );
-
-#endif

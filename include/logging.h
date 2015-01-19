@@ -1,5 +1,5 @@
-#ifndef DNA_UTILS_H
-#define DNA_UTILS_H
+#pragma once
+
 #include <stdio.h>
 
 static int dbg_counter = 0;
@@ -21,4 +21,3 @@ void log(const char * msg, ...) {
 }
 */
 
-#endif

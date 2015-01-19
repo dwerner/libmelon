@@ -1,15 +1,11 @@
 #include <string.h>
 #include <pthread.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include <unistd.h>
 #include <check.h>
 
-#include "promise.h"
-#include "actor.h"
-#include "actor_system.h"
-#include "fifo.h"
-#include "logging.h"
-#include "thread_pool.h"
+#include "melon.h"
 
 static fifo_t *fifo = NULL;
 
@@ -150,18 +146,39 @@ void test_few_tasks_thread_pool() {
 // consumer side of actor
 typedef enum {
   PING = 0,
-  PONG = 1
+  PONG = 1,
+  DONE = 2
 } message_type_t;
 
-void *actor_ping_receive( const actor_t *this, const message_t *msg ) {
+// Our user-defined receive method
+// Must return: NULL or a promise_t -> a chain of promises or a resolved promise with a value.
+// An immediately resolved promise can be created with promise_create_resolved()
+promise_t *actor_ping_receive( const actor_t *this, const message_t *msg ) {
   switch( msg->type ) {
     case PING: {
-      printf("actor: PING\n");
+      printf("%s-> PING ->%s %lu\n", this->name, msg->from->name, msg->id);
+      message_t *response = actor_message_create(this, NULL, (msg->id < 100 ? PONG : DONE) );
+      response->id = msg->id + 1;
 
-      // TODO: would really like to have message->from be actor_t* instead of void*.
-      // This is a problem with circular dependencies of typedefs - figure it out.
-      return (void*) message_create(NULL, PONG, (void*)this);
-    }
+      // actor_send returns a promise, so it will chain to the original one
+      // When the original promise is resolved ( such as with promise_get() )
+      // The entire chain will be resolved, up to the final value.
+      return actor_send( msg->from, response );
+    };
+    case PONG: {
+      printf("%s-> PONG ->%s %lu\n", this->name, msg->from->name, msg->id);
+      message_t *response = actor_message_create(this, NULL, (msg->id < 100 ? PING : DONE) );
+      response->id = msg->id + 1;
+      return actor_send( msg->from, response );
+    };
+    case DONE: {
+      // In this case we are done and want to resolve the result of some work.
+      // We use promise_create_resolved(); to encapsulate that value as a resolved promise.
+      printf("%s-> DONE ->%s %lu\n", this->name, msg->from->name, msg->id);
+      return promise_create_resolved( (void*) actor_message_create(this, NULL, DONE) );
+    };
+    // If this actor did not understand the message it was sent, it will return NULL,
+    // and the original promise will be resolved as NULL.
     default: break;
   };
   return NULL;
@@ -171,23 +188,26 @@ void test_actor_system() {
   printf( "<-------------------- test_actor_system  ---------------------\n");
   actor_system_t *actor_system = actor_system_create("stuff");
 
-  // create an actor and add it to the system
-  actor_t *actor = actor_create(&actor_ping_receive, "actor 1");
-  actor_system_add( actor_system, actor );
+  // create actors and add them to the system
+  actor_t *actor1 = actor_create(&actor_ping_receive, "actor1");
+  actor_t *actor2 = actor_create(&actor_ping_receive, "actor2");
+  actor_system_add( actor_system, actor1 );
+  actor_system_add( actor_system, actor2 );
 
   // create a message and send it to the actor, capturing the promise from actor_send
-  message_t *message = message_create(NULL, PING, NULL);
-  promise_t *promise = actor_send(actor, message);
+  message_t *message = actor_message_create( actor2, NULL, PING );
+  message->id = 1;
+  promise_t *promise = actor_send( actor1, message);
 
   // Starts execution of the actor system - enqueueing receive evaluation on an internal thread pool
   actor_system_run( actor_system );
 
-  // block this thread until we can resolve the promise
+  // block this thread until we can resolve the promise, in this case a chain of promises
   void *val = promise_get( promise );
   if (val) {
     // it happens to be a message created by the actor and returned
     message_t *response = (message_t*)val;
-    printf("resolved promise! %s\n", (response->type == PING ? "PING" : "PONG") );
+    printf("resolved promise: %s\n", (response->type == DONE ? "DONE" : "invalid!") );
   }
 
   // stop actor system, internal thread pool, task list, and clean up

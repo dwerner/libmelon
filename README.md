@@ -8,4 +8,4 @@
 
 `mkdir build && cd build && cmake .. && make`
 
-Should compile on most linux systems with gcc installed. Dependency on pthreads
+Should compile on most linux systems with gcc installed. Dependency on pthreads and check
