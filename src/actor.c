@@ -52,11 +52,12 @@ void *actor_receive_task_internal(void *arg) {
       // Either way, there's nothing to work with then.
       promise_set( msg->promise, NULL );
     } else {
-      if (result->state == RESOLVED) {
+      if (result->state == PROMISE_RESOLVED) {
         // If we got a resolved promise (no fifo, just a void*)
         // we resolve the promise and unblock the caller.
         promise_set( msg->promise, result->resolution );
-      } else if (result->state == CHAINED) {
+      } else if (result->state == PROMISE_WAITING) {
+        // If a promise is still pending, it can only be chained.
         // If we got a chained promise, we should chain internally for
         // resolution to succeed on the entire chain.
         promise_chain( msg->promise, result );
@@ -93,6 +94,7 @@ void actor_kill( actor_t *actor, void(*cleanup)(void*) ) {
 
 promise_t *actor_send(const actor_t *actor, message_t *message) {
   message->promise = promise_create();
+  message->promise->id = message->id;
   fifo_push( actor->mailbox, message );
   return message->promise;
 }

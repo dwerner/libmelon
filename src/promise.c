@@ -1,7 +1,7 @@
 #include <stdlib.h>
-#include <promise.h>
-#include "fifo.h"
+#include <stdio.h>
 
+#include "fifo.h"
 #include "promise.h"
 
 typedef enum {
@@ -14,17 +14,26 @@ typedef struct {
   value_type_t type;
 } value_t;
 
+#ifdef PROMISE_DEBUG
+#define promise_print(X) printf(X"\n")
+#define log_id(X) \
+printf("promise id: %lu\n", X->id);
+#else
+#define promise_print()
+#define log_id() {}
+#endif
+
 promise_t * promise_create() {
   promise_t *promise = (promise_t*) malloc( sizeof(promise_t) );
   promise->fifo = fifo_create("promise", 1);
-  promise->state = PENDING;
+  promise->state = PROMISE_WAITING;
   return promise;
 }
 
-promise_t *promise_create_resolved( void *resolved_value ) {
+promise_t *promise_resolved(void *resolved_value) {
   promise_t *promise = (promise_t*) malloc( sizeof(promise_t) );
   promise->fifo = NULL;
-  promise->state = RESOLVED;
+  promise->state = PROMISE_RESOLVED;
   promise->resolution = resolved_value;
   return promise;
 }
@@ -41,7 +50,7 @@ void promise_set(promise_t *promise, void *val) {
   value->type = VALUE;
   value->value = val;
   fifo_push( promise->fifo, value );
-  promise->state = RESOLVED;
+  promise->state = PROMISE_RESOLVED;
 }
 
 void *promise_get(promise_t *promise) {
@@ -53,7 +62,7 @@ void *promise_get(promise_t *promise) {
   }
   void *val = value->value;
   free(value);
-  promise->state = COMPLETE;
+  promise->state = PROMISE_COMPLETE;
   return val;
 }
 
