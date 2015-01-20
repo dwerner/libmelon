@@ -4,6 +4,12 @@
 #include "fifo.h"
 #include "thread_pool.h"
 
+/***
+* TODO:
+* - allow manual purging of the message pool (memory utilization/fragmentation)
+* - block allocation at startup; initialize with a pool of a certain size
+*/
+
 typedef struct actor_t actor_t;
 typedef struct message_t message_t;
 typedef struct actor_system_t actor_system_t;
@@ -11,6 +17,9 @@ typedef struct actor_system_t actor_system_t;
 struct actor_system_t {
   const char *name;
   fifo_t *actors;
+
+  // messages, due to being prolific, are recycled and
+  // cleaned up when the actor system is destroyed
   fifo_t *message_pool;
   thread_pool_t *thread_pool;
 };

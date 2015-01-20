@@ -7,6 +7,16 @@
 
 #include "melon.h"
 
+
+/***
+* TODO:
+* - convert to check.h unit tests.
+* - write an actor-ring test, many actors in a ring, sending messages along the ring
+* - mirror android-actors tests
+* - profile and optimize fifo, thread_pool, actor
+* - determine what our core benchmarks are
+*/
+
 static fifo_t *fifo = NULL;
 
 typedef struct {
@@ -16,12 +26,10 @@ typedef struct {
 
 static int thread_counter = 0;
 
+// CLion created these forward decls for me... I guess I should look at ordering...
 void fifo_check();
-
 void sleep_for(long seconds);
-
 void test_empty_thread_pool();
-
 void test_empty_fifo();
 
 #define ELEMS 1000
@@ -46,7 +54,7 @@ void *fifo_fill( void *nothing ) {
 }
 
 
-// empty the fifo and see what we have in it
+// test-helper: empty the fifo and see what we have in it
 void fifo_check() {
   printf("emptying result fifo...\n");
   int ctr = 0;
@@ -151,10 +159,11 @@ typedef enum {
 } message_type_t;
 
 #define TEST_MESSAGE_COUNT 1000000
-// Our user-defined receive method.
+
+// Our user-defined "receive" method.
 // Must return: NULL or a promise_t -> a chain of promises or a resolved promise with a value.
 // An immediately resolved promise can be created with promise_resolved()
-// actor_send() returns a promise chain..
+// actor_send() returns a promise chain.
 promise_t *actor_ping_receive( const actor_t *this, const message_t *msg ) {
   switch( msg->type ) {
     case PING: {
@@ -185,7 +194,7 @@ promise_t *actor_ping_receive( const actor_t *this, const message_t *msg ) {
     case DONE: {
       // In this case we are done and want to resolve the result of some work.
       // We use promise_resolved(); to encapsulate that value as a resolved promise.
-      printf("---------- <<<<<<<<<<<<<<< received DONE : %s-> DONE ->%s %lu\n", this->name, msg->from->name, msg->id);
+      printf("- received DONE : %s-> DONE ->%s %lu\n", this->name, msg->from->name, msg->id);
       return promise_resolved((void *) actor_message_create(this, NULL, DONE));
     };
     // If this actor did not understand the message it was sent, it will return NULL,
@@ -205,7 +214,7 @@ void test_actor_system() {
   actor_system_add( actor_system, actor1 );
   actor_system_add( actor_system, actor2 );
 
-  // create a message and send it to the actor, capturing the promise from actor_send
+  // create a message and send it to the actor, capturing the promise from
   message_t *message = actor_message_create( actor2, NULL, PING );
   message->id = 1;
   promise_t *promise = actor_send( actor1, message );
