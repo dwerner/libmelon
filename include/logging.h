@@ -1,4 +1,5 @@
-#pragma once
+#ifndef _MELON_LOGGING_H_
+#define _MELON_LOGGING_H_
 
 #include <stdio.h>
 
@@ -21,3 +22,4 @@ void log(const char * msg, ...) {
 }
 */
 
+#endif // _MELON_LOGGING_H_

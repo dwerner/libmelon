@@ -1,4 +1,5 @@
-#pragma once
+#ifndef _MELON_PROMISE_H_
+#define _MELON_PROMISE_H_
 
 #include "fifo.h"
 //#define PROMISE_DEBUG
@@ -24,3 +25,5 @@ void promise_set( promise_t *promise, void *val );
 void promise_chain( promise_t *promise1, promise_t *promise2 );
 void *promise_get( promise_t *promise );
 void promise_destroy( promise_t *promise );
+
+#endif // _MELON_PROMISE_H_

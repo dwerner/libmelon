@@ -1,4 +1,5 @@
-#pragma once
+#ifndef _MELON_ACTOR_SYSTEM_H_
+#define _MELON_ACTOR_SYSTEM_H_
 
 #include "actor.h"
 #include "fifo.h"
@@ -17,7 +18,6 @@ typedef struct actor_system_t actor_system_t;
 struct actor_system_t {
   const char *name;
   fifo_t *actors;
-
   // messages, due to being prolific, are recycled and
   // cleaned up when the actor system is destroyed
   fifo_t *message_pool;
@@ -32,3 +32,5 @@ void actor_system_destroy( actor_system_t *actor_system );
 message_t *actor_system_message_get( actor_system_t *actor_system, void *data, int type, const actor_t *from );
 void actor_system_recycle_messages( actor_system_t *actor_system, fifo_t *message_fifo );
 void actor_system_message_put( actor_system_t *actor_system, message_t *message );
+
+#endif //_MELON_ACTOR_SYSTEM_H_

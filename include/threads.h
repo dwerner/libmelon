@@ -1,4 +1,5 @@
-#pragma once
+#ifndef _MELON_THREADS_H_
+#define _MELON_THREADS_H_
 
 #include <pthread.h>
 
@@ -34,3 +35,5 @@ void dna_mutex_init ( pthread_mutex_t *mutex );
 void dna_mutex_destroy ( pthread_mutex_t *mutex );
 void dna_thread_cancel( pthread_t *thread );
 void dna_thread_detach( pthread_t *thread );
+
+#endif // _MELON_THREADS_H_

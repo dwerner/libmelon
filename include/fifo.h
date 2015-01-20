@@ -1,4 +1,5 @@
-#pragma once
+#ifndef _MELON_FIFO_H_
+#define _MELON_FIFO_H_
 
 #include <pthread.h>
 
@@ -30,3 +31,5 @@ void fifo_destroy( fifo_t *fifo );
 long fifo_count( fifo_t *fifo );
 void fifo_push( fifo_t * fifo, void * item );
 fifo_t *fifo_create( const char *name, long max_size );
+
+#endif // _MELON_FIFO_H_

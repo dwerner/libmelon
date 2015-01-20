@@ -1,4 +1,5 @@
-#pragma once
+#ifndef _MELON_MESSAGE_H_
+#define _MELON_MESSAGE_H_
 
 #include "actor.h"
 #include "promise.h"
@@ -16,3 +17,5 @@ struct message_t {
 
 message_t *message_create(void *data, int type, const actor_t *from);
 void message_destroy(message_t *message);
+
+#endif // _MELON_MESSAGE_H_

@@ -1,4 +1,6 @@
-#pragma once
+#ifndef _MELON_ACTOR_H_
+#define _MELON_ACTOR_H_
+
 
 #include "promise.h"
 #include "thread_pool.h"
@@ -41,3 +43,5 @@ void actor_spawn(actor_t *actor);
 void actor_kill( actor_t *actor, void(*cleanup)(void*) );
 promise_t *actor_send(const actor_t *actor, message_t *message);
 void actor_destroy( actor_t *actor );
+
+#endif // _MELON_ACTOR_H_

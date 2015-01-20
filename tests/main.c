@@ -164,23 +164,8 @@ typedef enum {
 // Must return: NULL or a promise_t -> a chain of promises or a resolved promise with a value.
 // An immediately resolved promise can be created with promise_resolved()
 // actor_send() returns a promise chain.
-promise_t *actor_ping_receive( const actor_t *this, const message_t *msg ) {
+promise_t *actor_pong_receive( const actor_t *this, const message_t *msg ) {
   switch( msg->type ) {
-    case PING: {
-      //printf("%s-> PING ->%s %lu\n", this->name, msg->from->name, msg->id);
-      message_t *response = actor_message_create(this, NULL, (msg->id < TEST_MESSAGE_COUNT ? PONG : DONE) );
-      response->id = msg->id + 1;
-
-      // actor_send returns a promise, so it will chain to the original one
-      // When the original promise is resolved ( such as with promise_get() )
-      // The entire chain will be resolved, up to the final value.
-      if (msg->id < TEST_MESSAGE_COUNT) {
-        return actor_send(msg->from, response);
-      } else {
-        printf("--- DONE without message. Queue ordering of task list? \n");
-        return promise_resolved((void *) actor_message_create(this, NULL, DONE));
-      }
-    };
     case PONG: {
       //printf("%s-> PONG ->%s %lu\n", this->name, msg->from->name, msg->id);
       message_t *response = actor_message_create(this, NULL, (msg->id < TEST_MESSAGE_COUNT ? PING : DONE) );
@@ -192,13 +177,37 @@ promise_t *actor_ping_receive( const actor_t *this, const message_t *msg ) {
       }
     };
     case DONE: {
-      // In this case we are done and want to resolve the result of some work.
-      // We use promise_resolved(); to encapsulate that value as a resolved promise.
+      message_t *response = actor_message_create(this, NULL,  DONE );
+      response->id = msg->id + 1;
       printf("- received DONE : %s-> DONE ->%s %lu\n", this->name, msg->from->name, msg->id);
-      return promise_resolved((void *) actor_message_create(this, NULL, DONE));
+      return promise_resolved(response);
     };
     // If this actor did not understand the message it was sent, it will return NULL,
     // and the original promise will be resolved as NULL.
+    default: break;
+  };
+  return NULL;
+}
+
+// actor_ping returns PONG or DONE
+promise_t *actor_ping_receive( const actor_t *this, const message_t *msg ) {
+  switch( msg->type ) {
+    case PING: {
+      message_t *response = actor_message_create(this, NULL, (msg->id < TEST_MESSAGE_COUNT ? PONG : DONE) );
+      response->id = msg->id + 1;
+      if (msg->id < TEST_MESSAGE_COUNT) {
+        return actor_send(msg->from, response);
+      } else {
+        printf("--- DONE without message. Queue ordering of task list? \n");
+        return promise_resolved(response);
+      }
+    };
+    case DONE: {
+      message_t *response = actor_message_create(this, NULL,  DONE );
+      response->id = msg->id + 1;
+      printf("- received DONE : %s-> DONE ->%s %lu\n", this->name, msg->from->name, msg->id);
+      return promise_resolved(response);
+    };
     default: break;
   };
   return NULL;
@@ -209,12 +218,13 @@ void test_actor_system() {
   actor_system_t *actor_system = actor_system_create("stuff");
 
   // create actors and add them to the system
-  actor_t *actor1 = actor_create(&actor_ping_receive, "actor1");
-  actor_t *actor2 = actor_create(&actor_ping_receive, "actor2");
+  actor_t *actor1 = actor_create( &actor_ping_receive, "ping" );
+  actor_t *actor2 = actor_create( &actor_pong_receive, "pong" );
   actor_system_add( actor_system, actor1 );
   actor_system_add( actor_system, actor2 );
 
-  // create a message and send it to the actor, capturing the promise from
+  // Create a message and send it to the actor, capturing the promise from
+  // this. Note that the actor passed to the message is spoofing a "from".
   message_t *message = actor_message_create( actor2, NULL, PING );
   message->id = 1;
   promise_t *promise = actor_send( actor1, message );
