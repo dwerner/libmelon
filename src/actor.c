@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <stdio.h>
 
 #include "fifo.h"
 #include "promise.h"
@@ -42,10 +43,11 @@ void *actor_receive_task_internal(void *arg) {
   actor_t *actor = (actor_t*) arg;
   // will block the thread, so we should only execute when there's a message waiting
   if (!fifo_is_empty(actor->mailbox)) {
-    actor->livestate = ACTOR_AWAKE;
 
+    actor->livestate = ACTOR_AWAKE;
     message_t *msg = (message_t*) fifo_pop( actor->mailbox );
     promise_t *result = actor->receive( actor, msg );
+    actor->livestate = ACTOR_IDLE;
 
     if ( !result ) {
       // If receive returns NULL, we most likely didn't handle a message.

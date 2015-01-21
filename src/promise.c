@@ -55,11 +55,14 @@ void promise_set(promise_t *promise, void *val) {
 
 void *promise_get(promise_t *promise) {
   value_t *value = fifo_pop( promise->fifo );
+  long i = 1;
   while( value->type == PROMISE_CHAIN ) {
+    i++;
     promise_t *next = (promise_t*) value->value;
     free( value );
     value = (value_t*) fifo_pop( next->fifo );
   }
+  printf("end of promise chain %lu...\n", i);
   void *val = value->value;
   free(value);
   promise->state = PROMISE_COMPLETE;

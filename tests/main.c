@@ -170,11 +170,7 @@ promise_t *actor_pong_receive( const actor_t *this, const message_t *msg ) {
       //printf("%s-> PONG ->%s %lu\n", this->name, msg->from->name, msg->id);
       message_t *response = actor_message_create(this, NULL, (msg->id < TEST_MESSAGE_COUNT ? PING : DONE) );
       response->id = msg->id + 1;
-      if (msg->id < TEST_MESSAGE_COUNT) {
-        return actor_send(msg->from, response);
-      } else {
-        return promise_resolved((void *) actor_message_create(this, NULL, DONE));
-      }
+      return actor_send(msg->from, response);
     };
     case DONE: {
       message_t *response = actor_message_create(this, NULL,  DONE );
@@ -193,14 +189,10 @@ promise_t *actor_pong_receive( const actor_t *this, const message_t *msg ) {
 promise_t *actor_ping_receive( const actor_t *this, const message_t *msg ) {
   switch( msg->type ) {
     case PING: {
+      //printf("%s-> PING ->%s %lu\n", this->name, msg->from->name, msg->id);
       message_t *response = actor_message_create(this, NULL, (msg->id < TEST_MESSAGE_COUNT ? PONG : DONE) );
       response->id = msg->id + 1;
-      if (msg->id < TEST_MESSAGE_COUNT) {
-        return actor_send(msg->from, response);
-      } else {
-        printf("--- DONE without message. Queue ordering of task list? \n");
-        return promise_resolved(response);
-      }
+      return actor_send(msg->from, response);
     };
     case DONE: {
       message_t *response = actor_message_create(this, NULL,  DONE );
@@ -213,8 +205,34 @@ promise_t *actor_ping_receive( const actor_t *this, const message_t *msg ) {
   return NULL;
 }
 
-void test_actor_system() {
-  printf( "<-------------------- test_actor_system  ---------------------\n");
+// actor_ping returns PONG or DONE
+promise_t *actor_nochain_receive( const actor_t *this, const message_t *msg ) {
+  switch( msg->type ) {
+    case PING: {
+      //printf("%s-> PING ->%s %lu\n", this->name, msg->from->name, msg->id);
+      message_t *response = actor_message_create(this, NULL, (msg->id < TEST_MESSAGE_COUNT ? PONG : DONE) );
+      response->id = msg->id + 1;
+      actor_send(msg->from, response);
+      return NULL;
+    };
+    case PONG: {
+      message_t *response = actor_message_create(this, NULL, (msg->id < TEST_MESSAGE_COUNT ? PING : DONE) );
+      response->id = msg->id + 1;
+      actor_send(msg->from, response);
+      return NULL;
+    };
+    case DONE: {
+      message_t *response = actor_message_create(this, NULL,  DONE );
+      response->id = msg->id + 1;
+      printf("- received DONE : %s-> DONE ->%s %lu\n", this->name, msg->from->name, msg->id);
+      actor_system_destroy( this->actor_system );
+    };
+    default: break;
+  };
+  return NULL;
+}
+void test_actor_system_promise_chain() {
+  printf( "<-------------------- test_actor_system_promise_chain ---------------------\n");
   actor_system_t *actor_system = actor_system_create("stuff");
 
   // create actors and add them to the system
@@ -237,11 +255,29 @@ void test_actor_system() {
   if (val) {
     // it happens to be a message created by the actor and returned
     message_t *response = (message_t*)val;
-    printf("resolved promise: %s\n", (response->type == DONE ? "DONE" : "invalid!") );
+    printf("resolved promise: %s\n", (response->type == DONE ? "PASSED" : "FAILED") );
   }
 
   // stop actor system, internal thread pool, task list, and clean up
   actor_system_destroy( actor_system );
+}
+
+void test_actor_system_no_chain() {
+  printf( "<-------------------- test_actor_system_nochain  ---------------------\n");
+  actor_system_t *actor_system = actor_system_create("stuff");
+  // create actors and add them to the system
+  actor_t *actor1 = actor_create( &actor_nochain_receive, "ping" );
+  actor_t *actor2 = actor_create( &actor_nochain_receive, "pong" );
+  actor_system_add( actor_system, actor1 );
+  actor_system_add( actor_system, actor2 );
+  message_t *message = actor_message_create( actor2, NULL, PING );
+  message->id = 1;
+  actor_send( actor1, message );
+  actor_system_run( actor_system );
+  while(!fifo_is_empty(actor_system->thread_pool->thread_queue)){
+    printf("waiting for thread pool to empty...\n");
+    sleep_for(1);
+  }
 }
 
 int main(int argc, char *argv[]) {
@@ -250,7 +286,9 @@ int main(int argc, char *argv[]) {
   test_empty_thread_pool();
   test_busy_thread_pool();
   test_few_tasks_thread_pool();
-  test_actor_system();
+  test_actor_system_promise_chain();
+  test_actor_system_no_chain();
+
   return 0;
 }
 
