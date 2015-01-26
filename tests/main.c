@@ -274,10 +274,9 @@ void test_actor_system_no_chain() {
   message->id = 1;
   actor_send( actor1, message );
   actor_system_run( actor_system );
-  while(!fifo_is_empty(actor_system->thread_pool->thread_queue)){
-    printf("waiting for thread pool to empty...\n");
-    sleep_for(1);
-  }
+  actor_kill( actor1, NULL );
+  actor_kill( actor2, NULL );
+  actor_system_destroy( actor_system );
 }
 
 int main(int argc, char *argv[]) {
@@ -287,6 +286,7 @@ int main(int argc, char *argv[]) {
   test_busy_thread_pool();
   test_few_tasks_thread_pool();
   test_actor_system_promise_chain();
+
   test_actor_system_no_chain();
 
   return 0;

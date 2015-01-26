@@ -7,8 +7,7 @@
 #include "thread_pool.h"
 #include "threads.h"
 
-//#define THREAD_POOL_LOG
-
+#define THREAD_POOL_LOG
 
 typedef struct {
   void* (*func)(void*);
@@ -63,23 +62,27 @@ void *execute_task_thread_internal( void *args ) {
   fifo_t *tasks = yargs->task_list;
   dna_thread_context_t *context = yargs->thread_context;
 
+#ifdef THREAD_POOL_LOG
+  printf("started execution of thread %lu\n", context->id);
+#endif
+
   task_t *task = NULL;
   while ( !dna_thread_context_should_exit(context) &&
           (task = (task_t*) fifo_pop( tasks ) ) ) {
 
-#ifdef THREAD_POOL_LOG
-    printf(">> executing task \n");
-#endif
-
-    //void *result =
-    // TODO: handle callback?
     if ( task->func ) { // thread_pool_destroy sends tasks which have NULL members in, don't bother executing it
       task_execute(task);
     }
     task_destroy( task );
+    if (dna_thread_context_should_exit(context)) {
+      break;
+    }
   }
 
   context->runstate = HAS_QUIT;
+#ifdef THREAD_POOL_LOG
+  printf("Execution of thread %lu has finished.\n", context->id );
+#endif
   pthread_exit(NULL);
   return NULL;
 }
@@ -96,7 +99,7 @@ thread_pool_t *thread_pool_create( const char *name, int thread_count ) {
   pool->thread_queue = fifo_create("(threads)", thread_count );
   int i = 0;
   for ( i = 0; i < thread_count; i++ ) {
-    dna_thread_context_t *context = dna_thread_context_create();
+    dna_thread_context_t *context = dna_thread_context_create(i+1);
     execution_args_t *args = execution_args_create(pool, context);
     dna_thread_context_execute(context, &execute_task_thread_internal, args);
     fifo_push( pool->thread_queue, context );
@@ -215,11 +218,6 @@ void thread_pool_enqueue_task( thread_pool_t *pool, task_t *task ) {
 }
 
 void thread_pool_enqueue( thread_pool_t *pool, void*(*func)(void*), void *arg) {
-
-#ifdef THREAD_POOL_LOG
-  printf("<< enqueuing task\n");
-#endif
-
   task_t *task = task_create( func, arg );
   thread_pool_enqueue_task( pool, task );
 }

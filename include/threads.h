@@ -13,12 +13,13 @@ typedef enum {
 } runstate_t;
 
 struct dna_thread_context_t {
+  long id;
   pthread_mutex_t *mutex; //used to lock access to the runstate
   runstate_t runstate;
   pthread_t *thread;
 };
 
-dna_thread_context_t *dna_thread_context_create();
+dna_thread_context_t *dna_thread_context_create( long id );
 void dna_thread_context_execute( dna_thread_context_t *context, void* (*func)(void*), void *args );
 void dna_thread_context_exit(dna_thread_context_t *context);
 int dna_thread_context_should_exit(dna_thread_context_t *context);

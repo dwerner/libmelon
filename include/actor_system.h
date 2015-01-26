@@ -22,6 +22,7 @@ struct actor_system_t {
   // cleaned up when the actor system is destroyed
   fifo_t *message_pool;
   thread_pool_t *thread_pool;
+
 };
 
 actor_system_t *actor_system_create(const char *name);

@@ -4,11 +4,14 @@
 
 #include "threads.h"
 
-dna_thread_context_t *dna_thread_context_create() {
+#define THREAD_CONTEXT_LOG
+
+dna_thread_context_t *dna_thread_context_create( long id ) {
   dna_thread_context_t *context = (dna_thread_context_t*) malloc(sizeof(dna_thread_context_t));
   context->mutex = (pthread_mutex_t*) malloc(sizeof(pthread_mutex_t));
   dna_mutex_init(context->mutex);
   context->runstate = IDLE;
+  context->id = id;
   return context;
 }
 
