@@ -120,8 +120,7 @@ int context_is_running(const void *arg ) {
 
 /***
 * The thread pool has the property that all the threads will keep running until signalled to quit.
-* This makes 'joining' useless, or rather interruptive. Each thread will join with pthread_exit() once it
-* has completed execution of it's current 'task_t'.
+* Each thread will call pthread_exit() once it has completed execution of it's current 'task_t'.
 */
 void thread_pool_join_all( thread_pool_t *pool ) {
   // Clear existing work from the queue

@@ -276,6 +276,7 @@ void test_actor_system_no_chain() {
   actor_system_run( actor_system );
   actor_kill( actor1, NULL );
   actor_kill( actor2, NULL );
+  thread_pool_join_all( actor_system->thread_pool );
   actor_system_destroy( actor_system );
 }
 
