@@ -79,11 +79,9 @@ void *execute_task_thread_internal( void *args ) {
     }
   }
 
-  context->runstate = HAS_QUIT;
 #ifdef THREAD_POOL_LOG
   printf("Execution of thread %lu has finished.\n", context->id );
 #endif
-  pthread_exit(NULL);
   return NULL;
 }
 
@@ -125,6 +123,7 @@ void thread_pool_exit_all( thread_pool_t *pool ) {
       pool->thread_queue,
       &kill_thread
   );
+
   // push new "work" into the queue to unblock threads waiting on the list
   int x = 0;
   for ( x = 0; x < fifo_count(pool->thread_queue); x++) {
@@ -157,6 +156,10 @@ void thread_pool_join_all( thread_pool_t *pool ) {
 #ifdef THREAD_POOL_LOG
       printf("some threads are still running...%i\n", threadsAreStillRunning);
 #endif
+      //struct timespec time;
+      //time.tv_nsec = 30*1000000; // 30 millis (30m nanos)
+      //time.tv_sec = 0;
+      //dna_cond_timedwait( pool->wait, pool->mutex, &time );
       dna_cond_wait( pool->wait, pool->mutex );
     }
 
@@ -181,11 +184,8 @@ void thread_pool_join_all( thread_pool_t *pool ) {
 #endif
 }
 
-
 void thread_pool_destroy( thread_pool_t *pool ) {
-
   //TODO: look at how to use va_args, really -> then write a logger.
-
 #ifdef THREAD_POOL_LOG
   printf("thread_pool_destroy\n");
 #endif
@@ -218,7 +218,7 @@ void thread_pool_destroy( thread_pool_t *pool ) {
     pool->tasks = NULL;
 
 #ifdef THREAD_POOL_LOG
-    printf("freeing context pool : (%s).\n", pool->name);
+    printf("freeing thread context pool \"%s\".\n", pool->name);
 #endif
 
     dna_mutex_destroy( pool->mutex );

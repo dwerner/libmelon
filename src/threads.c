@@ -61,12 +61,18 @@ void dna_cond_init( pthread_cond_t *cond ) {
   pthread_cond_init( cond, NULL );
 }
 
+void dna_cond_timedwait( pthread_cond_t *cond, pthread_mutex_t *mutex, const struct timespec *abstime  ) {
+  int code = 0;
+  while ((code = pthread_cond_timedwait( cond, mutex, abstime) )) {
+    printf("cond_timedwait failed (%i), trying again...\n", code);
+  }
+}
+
 void dna_cond_wait( pthread_cond_t *cond, pthread_mutex_t *mutex ) {
   int code = 0;
   while ((code = pthread_cond_wait( cond, mutex ) )) {
     printf("cond_wait failed (%i), trying again...\n", code);
   }
-  pthread_testcancel();
 }
 
 void dna_cond_signal( pthread_cond_t *cond ) {

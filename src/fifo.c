@@ -174,17 +174,18 @@ void fifo_empty( fifo_t *fifo ) {
 }
 
 int fifo_any( fifo_t *fifo, int(*predicate)(const void*) ) {
+  int result = 0;
   dna_mutex_lock(fifo->mutex);
   if ( predicate ) {
     node_t *head = fifo->first;
     while( head ) {
-      int result = predicate((const void *) head->data);
-      if (result) return result;
+      result = predicate((const void *) head->data);
+      if (result) break;
       head = head->next;
     }
   }
   dna_mutex_unlock(fifo->mutex);
-  return 0;
+  return result;
 }
 
 void fifo_each(fifo_t *fifo, void(*func)(void *) ) {

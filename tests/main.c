@@ -160,7 +160,7 @@ typedef enum {
   DONE = 2
 } message_type_t;
 
-#define TEST_MESSAGE_COUNT 5
+#define TEST_MESSAGE_COUNT 1000000
 
 // Our user-defined "receive" method.
 // Must return: NULL or a promise_t -> a chain of promises or a resolved promise with a value.
@@ -169,7 +169,9 @@ typedef enum {
 promise_t *actor_pong_receive( const actor_t *this, const message_t *msg ) {
   switch( msg->type ) {
     case PONG: {
-      //printf("%s-> PONG ->%s %lu\n", this->name, msg->from->name, msg->id);
+      if (msg->id % 100000 == 0) {
+        printf("%s-> PONG ->%s %lu\n", this->name, msg->from->name, msg->id);
+      }
       message_t *response = actor_message_create(this, NULL, (msg->id < TEST_MESSAGE_COUNT ? PING : DONE) );
       response->id = msg->id + 1;
       return actor_send(msg->from, response);
@@ -178,6 +180,8 @@ promise_t *actor_pong_receive( const actor_t *this, const message_t *msg ) {
       message_t *response = actor_message_create(this, NULL,  DONE );
       response->id = msg->id + 1;
       printf("- received DONE : %s-> DONE ->%s %lu\n", this->name, msg->from->name, msg->id);
+      actor_kill( (actor_t*)this, NULL );
+      actor_kill( (actor_t*)msg->from, NULL );
       return promise_resolved(response);
     };
     // If this actor did not understand the message it was sent, it will return NULL,
@@ -191,7 +195,9 @@ promise_t *actor_pong_receive( const actor_t *this, const message_t *msg ) {
 promise_t *actor_ping_receive( const actor_t *this, const message_t *msg ) {
   switch( msg->type ) {
     case PING: {
-      //printf("%s-> PING ->%s %lu\n", this->name, msg->from->name, msg->id);
+      if (msg->id % 100000 == 0) {
+        printf("%s-> PING ->%s %lu\n", this->name, msg->from->name, msg->id);
+      }
       message_t *response = actor_message_create(this, NULL, (msg->id < TEST_MESSAGE_COUNT ? PONG : DONE) );
       response->id = msg->id + 1;
       return actor_send(msg->from, response);
@@ -235,6 +241,10 @@ void test_actor_system_promise_chain() {
     printf("resolved promise: %s\n", (response->type == DONE ? "PASSED" : "FAILED") );
   }
 
+  actor_kill( actor1, NULL );
+  actor_kill( actor2, NULL );
+
+  thread_pool_join_all( actor_system->thread_pool );
   // stop actor system, internal thread pool, task list, and clean up
   actor_system_destroy( actor_system );
 }
@@ -243,22 +253,24 @@ void test_actor_system_promise_chain() {
 promise_t *actor_nochain_receive( const actor_t *this, const message_t *msg ) {
   switch( msg->type ) {
     case PING: {
-      printf("%s-> PING ->%s %lu\n", this->name, msg->from->name, msg->id);
+      if (msg->id % 100000 == 0) {
+        printf("%s-> PING ->%s %lu\n", this->name, msg->from->name, msg->id);
+      }
       message_t *response = actor_message_create(this, NULL, (msg->id < TEST_MESSAGE_COUNT ? PONG : DONE) );
       response->id = msg->id + 1;
       actor_send(msg->from, response);
       return NULL;
     };
     case PONG: {
-      printf("%s-> PONG ->%s %lu\n", this->name, msg->from->name, msg->id);
+      if (msg->id % 100000 == 0) {
+        printf("%s-> PONG ->%s %lu\n", this->name, msg->from->name, msg->id);
+      }
       message_t *response = actor_message_create(this, NULL, (msg->id < TEST_MESSAGE_COUNT ? PING : DONE) );
       response->id = msg->id + 1;
       actor_send(msg->from, response);
       return NULL;
     };
     case DONE: {
-      message_t *response = actor_message_create(this, NULL,  DONE );
-      response->id = msg->id + 1;
       printf("- received DONE : %s-> DONE ->%s %lu\n", this->name, msg->from->name, msg->id);
       actor_kill( (actor_t*)this, NULL );
       actor_kill( (actor_t*)msg->from, NULL );
@@ -280,20 +292,20 @@ void test_actor_system_no_chain() {
   message->id = 1;
   actor_send( actor1, message );
   actor_system_run( actor_system );
+
+  // immediately join, blocking the main thread until all work is complete.
   thread_pool_join_all( actor_system->thread_pool );
   actor_system_destroy( actor_system );
 }
 
 int main(int argc, char *argv[]) {
-//  test_empty_fifo();
-//  test_fifo();
-//  test_empty_thread_pool();
-//  test_busy_thread_pool();
-//  test_few_tasks_thread_pool();
-//  test_actor_system_promise_chain();
-
+  test_empty_fifo();
+  test_fifo();
+  test_empty_thread_pool();
+  test_busy_thread_pool();
+  test_few_tasks_thread_pool();
+  test_actor_system_promise_chain();
   test_actor_system_no_chain();
-
   return 0;
 }
 
