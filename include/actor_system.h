@@ -27,7 +27,9 @@ struct actor_system_t {
 
 actor_system_t *actor_system_create(const char *name);
 void actor_system_add( actor_system_t *actor_system, actor_t *actor );
+void actor_system_remove( actor_system_t *actor_system, actor_t *actor );
 void actor_system_run( actor_system_t *actor_system );
+void actor_system_stop( actor_system_t * actor_system );
 void actor_system_destroy( actor_system_t *actor_system );
 
 message_t *actor_system_message_get( actor_system_t *actor_system, void *data, int type, const actor_t *from );

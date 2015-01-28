@@ -94,6 +94,10 @@ void *execute_task_thread_internal( void *args ) {
 thread_pool_t *thread_pool_create( const char *name, int thread_count ) {
   assert( thread_count > 0 );
   thread_pool_t *pool = (thread_pool_t*) malloc( sizeof( thread_pool_t ) );
+  pool->mutex = (pthread_mutex_t*) malloc(sizeof(pthread_mutex_t));
+  dna_mutex_init(pool->mutex);
+  pool->wait = (pthread_cond_t*) malloc(sizeof(pthread_cond_t));
+  dna_cond_init(pool->wait);
   pool->name = name;
   pool->tasks = fifo_create("(tasks)", 50 );
   pool->thread_queue = fifo_create("(threads)", thread_count );
@@ -113,9 +117,28 @@ void kill_thread(void *arg) {
   dna_thread_context_exit(context);
 }
 
-int context_is_running(const void *arg ) {
-  dna_thread_context_t *context = (dna_thread_context_t*) arg;
-  return context->runstate == RUNNING;
+void thread_pool_exit_all( thread_pool_t *pool ) {
+  dna_mutex_lock( pool->mutex );
+  fifo_empty( pool->tasks );
+
+  fifo_each(
+      pool->thread_queue,
+      &kill_thread
+  );
+  // push new "work" into the queue to unblock threads waiting on the list
+  int x = 0;
+  for ( x = 0; x < fifo_count(pool->thread_queue); x++) {
+    // We guard and don't execute NULL function pointers
+    // This merely meets the needs of the fifo for unblocking.
+    thread_pool_enqueue( pool, NULL, NULL );
+  }
+  dna_cond_signal( pool->wait );
+  dna_mutex_unlock( pool->mutex );
+}
+
+int thread_context_is_running(const void * arg ) {
+  const dna_thread_context_t *ctx = (const dna_thread_context_t*)arg;
+  return ctx->runstate == RUNNING;
 }
 
 /***
@@ -123,44 +146,35 @@ int context_is_running(const void *arg ) {
 * Each thread will call pthread_exit() once it has completed execution of it's current 'task_t'.
 */
 void thread_pool_join_all( thread_pool_t *pool ) {
-  // Clear existing work from the queue
-  fifo_empty(pool->tasks);
-
-  // mark set each thread to quit (TODO: move to threads.c ?)
-  fifo_each( // fo' each haha
-      pool->thread_queue,
-      &kill_thread
-  );
-
 #ifdef THREAD_POOL_LOG
   printf("joining thread pool:\n");
 #endif
-
-  // push new "work" into the queue to unblock threads waiting on the list
-  int x = 0;
-  for ( x = 0; x < fifo_count(pool->thread_queue); x++) {
-    // We guard and don't execute NULL function pointers
-    // This merely meets the needs of the fifo for unblocking.
-    thread_pool_enqueue(pool, NULL, NULL);
-  }
-
   while ( !fifo_is_empty(pool->thread_queue) ) {
+    dna_mutex_lock( pool->mutex );
+
+    int threadsAreStillRunning = 0;
+    while ( (threadsAreStillRunning = fifo_any( pool->thread_queue, &thread_context_is_running)) ) {
+#ifdef THREAD_POOL_LOG
+      printf("some threads are still running...%i\n", threadsAreStillRunning);
+#endif
+      dna_cond_wait( pool->wait, pool->mutex );
+    }
+
     dna_thread_context_t *context = (dna_thread_context_t*) fifo_pop( pool->thread_queue );
     if (context->runstate == RUNNING) { // not thread-safe
-
 #ifdef THREAD_POOL_LOG
       printf("context is still running, placing back in the queue.\n");
 #endif
-
       fifo_push( pool->thread_queue, context );
     }
     else {
       // if the context is != RUNNING, it's either SHOULD_QUIT or HAS_QUIT
       // so we have to rely on the null work we pushed earlier to clear
       // any blocks
-      pthread_join(*context->thread, NULL);
+      dna_thread_context_join( context );
       dna_thread_context_destroy(context);
     }
+    dna_mutex_unlock( pool->mutex );
   }
 #ifdef THREAD_POOL_LOG
   printf("thread pool joined\n");
@@ -207,12 +221,15 @@ void thread_pool_destroy( thread_pool_t *pool ) {
     printf("freeing context pool : (%s).\n", pool->name);
 #endif
 
+    dna_mutex_destroy( pool->mutex );
+    dna_cond_destroy( pool->wait );
+    free(pool->mutex);
+    free(pool->wait);
     free( pool );
   }
 }
 
 void thread_pool_enqueue_task( thread_pool_t *pool, task_t *task ) {
-  // for now, we wont keep track of ids for tasks
   fifo_push( pool->tasks, task );
 }
 

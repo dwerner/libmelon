@@ -106,6 +106,7 @@ void test_empty_thread_pool() {
     printf("starting thread pool\n");
     thread_pool_t *pool = thread_pool_create("main pool", 1);
     printf("destroying thread pool\n");
+    thread_pool_exit_all(pool);
     thread_pool_destroy(pool);
     fifo_check();
     fifo_destroy(fifo);
@@ -122,10 +123,10 @@ void test_busy_thread_pool() {
     thread_pool_enqueue(pool, &fifo_fill, NULL);
   }
   printf("waiting for threads to complete on their own...\n");
+  thread_pool_exit_all(pool);
   thread_pool_join_all( pool );
   printf("destroying thread pool...\n");
   thread_pool_destroy( pool );
-
   fifo_check();
   printf("destroying global value fifo.\n");
   fifo_destroy( fifo );
@@ -141,6 +142,7 @@ void test_few_tasks_thread_pool() {
     thread_pool_enqueue(pool, &fifo_fill, NULL);
   }
   printf("waiting for threads to complete on their own...\n");
+  thread_pool_exit_all(pool);
   thread_pool_join_all( pool );
   printf("destroying thread pool...\n");
   thread_pool_destroy( pool );
@@ -158,7 +160,7 @@ typedef enum {
   DONE = 2
 } message_type_t;
 
-#define TEST_MESSAGE_COUNT 1000000
+#define TEST_MESSAGE_COUNT 5
 
 // Our user-defined "receive" method.
 // Must return: NULL or a promise_t -> a chain of promises or a resolved promise with a value.
@@ -205,32 +207,7 @@ promise_t *actor_ping_receive( const actor_t *this, const message_t *msg ) {
   return NULL;
 }
 
-// actor_ping returns PONG or DONE
-promise_t *actor_nochain_receive( const actor_t *this, const message_t *msg ) {
-  switch( msg->type ) {
-    case PING: {
-      //printf("%s-> PING ->%s %lu\n", this->name, msg->from->name, msg->id);
-      message_t *response = actor_message_create(this, NULL, (msg->id < TEST_MESSAGE_COUNT ? PONG : DONE) );
-      response->id = msg->id + 1;
-      actor_send(msg->from, response);
-      return NULL;
-    };
-    case PONG: {
-      message_t *response = actor_message_create(this, NULL, (msg->id < TEST_MESSAGE_COUNT ? PING : DONE) );
-      response->id = msg->id + 1;
-      actor_send(msg->from, response);
-      return NULL;
-    };
-    case DONE: {
-      message_t *response = actor_message_create(this, NULL,  DONE );
-      response->id = msg->id + 1;
-      printf("- received DONE : %s-> DONE ->%s %lu\n", this->name, msg->from->name, msg->id);
-      actor_system_destroy( this->actor_system );
-    };
-    default: break;
-  };
-  return NULL;
-}
+
 void test_actor_system_promise_chain() {
   printf( "<-------------------- test_actor_system_promise_chain ---------------------\n");
   actor_system_t *actor_system = actor_system_create("stuff");
@@ -262,6 +239,35 @@ void test_actor_system_promise_chain() {
   actor_system_destroy( actor_system );
 }
 
+// actor_ping returns PONG or DONE
+promise_t *actor_nochain_receive( const actor_t *this, const message_t *msg ) {
+  switch( msg->type ) {
+    case PING: {
+      printf("%s-> PING ->%s %lu\n", this->name, msg->from->name, msg->id);
+      message_t *response = actor_message_create(this, NULL, (msg->id < TEST_MESSAGE_COUNT ? PONG : DONE) );
+      response->id = msg->id + 1;
+      actor_send(msg->from, response);
+      return NULL;
+    };
+    case PONG: {
+      printf("%s-> PONG ->%s %lu\n", this->name, msg->from->name, msg->id);
+      message_t *response = actor_message_create(this, NULL, (msg->id < TEST_MESSAGE_COUNT ? PING : DONE) );
+      response->id = msg->id + 1;
+      actor_send(msg->from, response);
+      return NULL;
+    };
+    case DONE: {
+      message_t *response = actor_message_create(this, NULL,  DONE );
+      response->id = msg->id + 1;
+      printf("- received DONE : %s-> DONE ->%s %lu\n", this->name, msg->from->name, msg->id);
+      actor_kill( (actor_t*)this, NULL );
+      actor_kill( (actor_t*)msg->from, NULL );
+    };
+    default: break;
+  };
+  return NULL;
+}
+
 void test_actor_system_no_chain() {
   printf( "<-------------------- test_actor_system_nochain  ---------------------\n");
   actor_system_t *actor_system = actor_system_create("stuff");
@@ -274,19 +280,17 @@ void test_actor_system_no_chain() {
   message->id = 1;
   actor_send( actor1, message );
   actor_system_run( actor_system );
-  actor_kill( actor1, NULL );
-  actor_kill( actor2, NULL );
   thread_pool_join_all( actor_system->thread_pool );
   actor_system_destroy( actor_system );
 }
 
 int main(int argc, char *argv[]) {
-  test_empty_fifo();
-  test_fifo();
-  test_empty_thread_pool();
-  test_busy_thread_pool();
-  test_few_tasks_thread_pool();
-  test_actor_system_promise_chain();
+//  test_empty_fifo();
+//  test_fifo();
+//  test_empty_thread_pool();
+//  test_busy_thread_pool();
+//  test_few_tasks_thread_pool();
+//  test_actor_system_promise_chain();
 
   test_actor_system_no_chain();
 

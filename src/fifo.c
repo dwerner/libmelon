@@ -56,33 +56,11 @@ void node_destroy( node_t *node ) {
   if (node) { free( node ); }
 }
 
-
-#define NODE_CACHE_SIZE 50
-
 fifo_t *fifo_create( const char *name, long max_size ) {
   fifo_t *fifo = (fifo_t *) malloc( sizeof(fifo_t) );
   if (name) fifo->name = name;
   fifo->mutex = (pthread_mutex_t*) malloc( sizeof( pthread_mutex_t ) );
   fifo->wait_pop = (pthread_cond_t*) malloc( sizeof( pthread_cond_t ) );
-
-  /*// IN PROGRESS - implementation of size limitation and node caching
-  long preallocated_nodes = max_size ? max_size : NODE_CACHE_SIZE;
-  node_t *node_list = (node_t*) malloc( sizeof(node_t) * preallocated_nodes );
-  node_t *iterator = node_list;
-  long l = 0;
-  for ( l = 0; l < preallocated_nodes; l++ ) {
-    iterator->data = NULL;
-    iterator->next = &node_list[l];
-    iterator = iterator->next;
-  }
-  fifo->node_cache = node_list;
-
-  if (max_size) {
-    fifo->wait_push = (pthread_cond_t*) malloc( sizeof( pthread_cond_t ) );
-    dna_cond_init( fifo->wait_push );
-  }
-  */
-
   dna_mutex_init( fifo->mutex );
   dna_cond_init( fifo->wait_pop );
   fifo->size = 0;
@@ -201,7 +179,7 @@ int fifo_any( fifo_t *fifo, int(*predicate)(const void*) ) {
     node_t *head = fifo->first;
     while( head ) {
       int result = predicate((const void *) head->data);
-      if (result) break;
+      if (result) return result;
       head = head->next;
     }
   }
@@ -220,7 +198,6 @@ void fifo_each(fifo_t *fifo, void(*func)(void *) ) {
   }
   dna_mutex_unlock(fifo->mutex);
 }
-
 
 // Clean up after and free a fifo
 void fifo_destroy( fifo_t *fifo ) {

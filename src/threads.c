@@ -9,14 +9,15 @@
 dna_thread_context_t *dna_thread_context_create( long id ) {
   dna_thread_context_t *context = (dna_thread_context_t*) malloc(sizeof(dna_thread_context_t));
   context->mutex = (pthread_mutex_t*) malloc(sizeof(pthread_mutex_t));
-  dna_mutex_init(context->mutex);
   context->runstate = IDLE;
   context->id = id;
+  dna_mutex_init( context->mutex );
   return context;
 }
 
 void dna_thread_context_execute( dna_thread_context_t *context, void* (*func)(void*), void *args ) {
   dna_mutex_lock(context->mutex);
+  context->locked++;
   context->runstate = RUNNING;
   context->thread = (pthread_t*) malloc(sizeof(pthread_t));
   pthread_create(context->thread, NULL, func, args);
@@ -24,17 +25,14 @@ void dna_thread_context_execute( dna_thread_context_t *context, void* (*func)(vo
 }
 
 void dna_thread_context_exit(dna_thread_context_t *context) {
-  dna_mutex_lock(context->mutex);
+  // locked in context_execute
+  //dna_mutex_lock(context->mutex);
+  context->locked--;
   context->runstate = SHOULD_QUIT;
-  dna_mutex_unlock(context->mutex);
 }
 
 int dna_thread_context_should_exit(dna_thread_context_t *context) {
-  int should_exit = 0;
-  dna_mutex_lock(context->mutex);
-  should_exit = context->runstate == SHOULD_QUIT;
-  dna_mutex_unlock(context->mutex);
-  return should_exit;
+  return context->runstate == SHOULD_QUIT;
 }
 
 void dna_thread_context_destroy(dna_thread_context_t *context) {
@@ -124,4 +122,8 @@ void dna_thread_detach( pthread_t *thread ) {
   while( (i = pthread_detach(*thread)) ){
     printf("thread detach failed: %i, trying again...\n", i);
   }
+}
+
+void dna_thread_context_join( dna_thread_context_t * ctx ) {
+  pthread_join( *ctx->thread, NULL );
 }

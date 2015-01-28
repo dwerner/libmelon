@@ -23,6 +23,9 @@ struct fifo_t {
 };
 
 void*fifo_pop( fifo_t *fifo );
+//void*fifo_peek( fifo_t *fifo );
+//fifo_t *fifo_filter( fifo_t *fifo )
+//fifo_t *fifo_extract( fifo_t *fifo, int(*predicate)(const void*) );
 int  fifo_any( fifo_t *fifo, int(*predicate)(const void*) );
 void fifo_each(fifo_t *fifo, void(*func)(void *) );
 void fifo_empty( fifo_t *fifo );

@@ -52,6 +52,9 @@ void *actor_receive_task_internal(void *arg) {
     message_t *msg = (message_t*) fifo_pop( actor->mailbox );
     promise_t *result = actor->receive( actor, msg );
     actor->livestate = ACTOR_IDLE;
+    if (actor->state == ACTOR_DEAD) {
+      return result;
+    }
 
     if ( !result ) {
       // If receive returns NULL, we most likely didn't handle a message.
@@ -97,12 +100,20 @@ void actor_kill( actor_t *actor, void(*cleanup)(void*) ) {
 #endif
   if (actor->state != ACTOR_DEAD) {
     actor->state = ACTOR_DEAD;
+    actor_system_remove( actor->actor_system, actor );
     // run a cleanup callback on the mailbox if one is provided - don't free messages!
     if (cleanup) {
       fifo_each(actor->mailbox, cleanup);
     }
     // drain any remaining messages to the fifo...
     actor_system_recycle_messages(actor->actor_system, actor->mailbox);
+  }
+  // If the last actor has been killed, stop the actor system
+  if (fifo_is_empty(actor->actor_system->actors) ) {
+#ifdef ACTOR_LOG
+    printf("Actor system no longer has any actors within it, stopping...\n");
+#endif
+    actor_system_stop(actor->actor_system);
   }
 }
 

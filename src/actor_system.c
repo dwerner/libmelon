@@ -9,7 +9,7 @@ actor_system_t *actor_system_create(const char* name){
   actor_system->name = name;
   actor_system->message_pool = fifo_create("message pool", 0 /* TODO:message pool size!? */);
   actor_system->actors = fifo_create("actors", 0);
-  actor_system->thread_pool = thread_pool_create("actor system thread pool", 8);
+  actor_system->thread_pool = thread_pool_create("actor system thread pool", 2);
   return actor_system;
 }
 
@@ -17,6 +17,21 @@ void actor_system_add(actor_system_t *actor_system, actor_t *actor) {
   actor->actor_system = actor_system;
   actor->pool = actor_system->thread_pool;
   fifo_push( actor_system->actors, actor );
+}
+
+void actor_system_remove( actor_system_t *actor_system, actor_t *actor ) {
+  if ( !fifo_is_empty(actor_system->actors) ) {
+    int i = 0;
+    long len = fifo_count( actor_system->actors );
+    for ( i = 0; i < len; i++ ) {
+      actor_t *test = (actor_t*) fifo_pop( actor_system->actors );
+      if (test == actor) {
+        return;
+      } else {
+        fifo_push( actor_system->actors, test );
+      }
+    }
+  }
 }
 
 void spawn_actor( void *arg ) {
@@ -51,6 +66,7 @@ void actor_system_destroy(actor_system_t *actor_system) {
   fifo_destroy( actor_system->message_pool );
 
   // destroy the thread pool
+  thread_pool_exit_all( actor_system->thread_pool );
   thread_pool_destroy( actor_system->thread_pool );
   free( actor_system );
 }
@@ -65,6 +81,10 @@ message_t *actor_system_message_get( actor_system_t *actor_system, void *data, i
     msg->from = from;
   }
   return message_create(data, type, from);
+}
+
+void actor_system_stop( actor_system_t * actor_system ) {
+  thread_pool_exit_all( actor_system->thread_pool );
 }
 
 void actor_system_message_put(actor_system_t *actor_system, message_t *message) {
