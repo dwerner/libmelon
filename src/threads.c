@@ -100,11 +100,11 @@ void dna_cond_destroy( pthread_cond_t *cond ) {
   }
 }
 
+static pthread_mutexattr_t mutex_attr;
+
 void dna_mutex_init( pthread_mutex_t *mutex ) {
-  pthread_mutexattr_t *attr = (pthread_mutexattr_t*)malloc(sizeof(pthread_mutexattr_t));
-  pthread_mutexattr_init(attr);
-  pthread_mutexattr_settype(attr, PTHREAD_MUTEX_RECURSIVE);
-  pthread_mutex_init( mutex, attr );
+  pthread_mutexattr_settype(&mutex_attr, PTHREAD_MUTEX_RECURSIVE);
+  pthread_mutex_init( mutex, &mutex_attr );
 }
 
 void dna_mutex_destroy( pthread_mutex_t *mutex ) {

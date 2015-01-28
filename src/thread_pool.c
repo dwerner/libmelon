@@ -62,6 +62,8 @@ void *execute_task_thread_internal( void *args ) {
   fifo_t *tasks = yargs->task_list;
   dna_thread_context_t *context = yargs->thread_context;
 
+  free( yargs );
+
 #ifdef THREAD_POOL_LOG
   printf("started execution of thread %lu\n", context->id);
 #endif

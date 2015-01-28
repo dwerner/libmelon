@@ -9,7 +9,7 @@ actor_system_t *actor_system_create(const char* name){
   actor_system->name = name;
   actor_system->message_pool = fifo_create("message pool", 0 /* TODO:message pool size!? */);
   actor_system->actors = fifo_create("actors", 0);
-  actor_system->thread_pool = thread_pool_create("actor system thread pool", 2);
+  actor_system->thread_pool = thread_pool_create("actor system thread pool", 8 /* CPU detection here? */);
   return actor_system;
 }
 
@@ -72,14 +72,14 @@ void actor_system_destroy(actor_system_t *actor_system) {
 }
 
 message_t *actor_system_message_get( actor_system_t *actor_system, void *data, int type, const actor_t *from ) {
-  if (!fifo_is_empty(actor_system->message_pool)) {
+  /*if (!fifo_is_empty(actor_system->message_pool)) {
     message_t* msg = (message_t*) fifo_pop( actor_system->message_pool );
     msg->type = type;
     msg->id = 0;
     msg->data = data;
     msg->promise = NULL;
     msg->from = from;
-  }
+  }*/
   return message_create(data, type, from);
 }
 

@@ -160,7 +160,7 @@ typedef enum {
   DONE = 2
 } message_type_t;
 
-#define TEST_MESSAGE_COUNT 1000000
+#define TEST_MESSAGE_COUNT 1000
 
 // Our user-defined "receive" method.
 // Must return: NULL or a promise_t -> a chain of promises or a resolved promise with a value.
