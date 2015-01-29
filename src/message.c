@@ -15,6 +15,7 @@ message_t *message_create(void *data, int type, const actor_t *from) {
 
 void message_destroy(message_t *message) {
   promise_destroy( message->promise );
+  message->promise = NULL;
   free( message );
 }
 

@@ -119,7 +119,7 @@ node_t *fifo_pop_internal( fifo_t *fifo ) {
 }
 
 int fifo_is_empty( fifo_t *fifo ) {
-  return fifo->first == NULL;
+  return !fifo || !fifo->first;
 }
 
 void fifo_push( fifo_t * fifo, void *item ) {

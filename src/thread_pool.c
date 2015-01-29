@@ -117,9 +117,16 @@ void kill_thread(void *arg) {
   dna_thread_context_exit(context);
 }
 
+void delete_task( void *arg ) {
+  task_t *task = (task_t*)arg;
+  task_destroy(task);
+}
+
 void thread_pool_exit_all( thread_pool_t *pool ) {
   dna_mutex_lock( pool->mutex );
-  fifo_empty( pool->tasks );
+
+  fifo_each( pool->tasks, &delete_task );
+  fifo_empty(pool->tasks);
 
   fifo_each(
       pool->thread_queue,
@@ -128,7 +135,7 @@ void thread_pool_exit_all( thread_pool_t *pool ) {
 
   // push new "work" into the queue to unblock threads waiting on the list
   int x = 0;
-  for ( x = 0; x < fifo_count(pool->thread_queue); x++) {
+  for ( x = 0; x < fifo_count( pool->thread_queue ); x++) {
     // We guard and don't execute NULL function pointers
     // This merely meets the needs of the fifo for unblocking.
     thread_pool_enqueue( pool, NULL, NULL );
@@ -211,7 +218,7 @@ void thread_pool_destroy( thread_pool_t *pool ) {
     printf("destroying tasks in fifo...\n");
 #endif
 
-    if ( !fifo_is_empty( pool->tasks ) ) {
+    while ( !fifo_is_empty( pool->tasks ) ) {
       task_t *task = (task_t*) fifo_pop( pool->tasks );
       task_destroy( task );
     }

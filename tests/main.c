@@ -19,32 +19,20 @@
 
 static fifo_t *fifo = NULL;
 
-typedef struct {
-  int id;
-  int value;
-} int_message_t;
-
-static int thread_counter = 0;
-
 // CLion created these forward decls for me... I guess I should look at ordering...
 void fifo_check();
 void sleep_for(long seconds);
 void test_empty_thread_pool();
 void test_empty_fifo();
 
-#define ELEMS 1000
+#define ELEMS 1000000
 //#define VALUE_LOG
 //#define SLEEPAFTER
 
 void *fifo_fill( void *nothing ) {
-  int cap = ++thread_counter;
   int i = 0;
   for (i = 0; i < ELEMS; i++) {
-    int_message_t *val = (int_message_t*) malloc( sizeof(int_message_t) );
-    val->id = cap;
-    val->value = i;
-    fifo_push( fifo, val );
-
+    fifo_push( fifo, NULL );
 #ifdef VALUE_LOG
     printf("<< added %i to value fifo\n", i);
 #endif
@@ -62,7 +50,9 @@ void fifo_check() {
     void *val = fifo_pop( fifo );
     if (val) {
       message_t *msg = (message_t *) val;
-      free(msg);
+      if (msg) {
+        free(msg);
+      }
       ctr++;
     }
   }

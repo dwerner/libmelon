@@ -52,14 +52,12 @@ void promise_set(promise_t *promise, void *val) {
 // Will actually call free( promise );
 void *promise_get( promise_t *promise ) {
   value_t *value = (value_t*) fifo_pop( promise->fifo );
-  promise_destroy( promise );
   long i = 1;
   while( value->type == PROMISE_CHAIN ) {
     i++;
     promise_t *next = (promise_t*) value->value;
     free( value );
     value = (value_t*) fifo_pop( next->fifo );
-    promise_destroy( next );
   }
   printf("end of promise chain %lu...\n", i);
   void *val = value->value;
@@ -74,6 +72,7 @@ void promise_destroy(promise_t *promise) {
       free(value);
     }
     fifo_destroy( promise->fifo );
+    promise->fifo = NULL;
     free(promise);
   }
 }
