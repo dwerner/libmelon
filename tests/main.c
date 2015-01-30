@@ -21,11 +21,10 @@ static fifo_t *fifo = NULL;
 
 // CLion created these forward decls for me... I guess I should look at ordering...
 void fifo_check();
-void sleep_for(long seconds);
 void test_empty_thread_pool();
 void test_empty_fifo();
 
-#define ELEMS 1000000
+#define ELEMS 10000
 //#define VALUE_LOG
 //#define SLEEPAFTER
 
@@ -59,10 +58,11 @@ void fifo_check() {
   printf("Counted %i elements popped from value queue\n", ctr);
 }
 
-void sleep_for(long seconds) {
+void sleep_for( long seconds ) {
   printf("Sleeping for %lu", seconds);
   struct timespec interval = {
-      .tv_sec = (time_t) seconds
+      .tv_sec = (time_t) seconds,
+      .tv_nsec = 0
   };
   nanosleep(&interval, NULL);
 }
@@ -81,7 +81,6 @@ void test_fifo() {
   int j = 0;
   for (j = 0; j < 10; j++) {
     fifo_t *fifo = fifo_create("<test fifo>", 0);
-
     fifo_destroy(fifo);
   }
 }
@@ -150,7 +149,7 @@ typedef enum {
   DONE = 2
 } message_type_t;
 
-#define TEST_MESSAGE_COUNT 1000
+#define TEST_MESSAGE_COUNT 100000
 
 // Our user-defined "receive" method.
 // Must return: NULL or a promise_t -> a chain of promises or a resolved promise with a value.
@@ -286,15 +285,17 @@ void test_actor_system_no_chain() {
   // immediately join, blocking the main thread until all work is complete.
   thread_pool_join_all( actor_system->thread_pool );
   actor_system_destroy( actor_system );
+  actor_destroy( actor1 );
+  actor_destroy( actor2 );
 }
 
 int main(int argc, char *argv[]) {
-  test_empty_fifo();
-  test_fifo();
-  test_empty_thread_pool();
-  test_busy_thread_pool();
-  test_few_tasks_thread_pool();
-  test_actor_system_promise_chain();
+//test_empty_fifo();
+//test_fifo();
+//test_empty_thread_pool();
+//test_busy_thread_pool();
+//test_few_tasks_thread_pool();
+//test_actor_system_promise_chain();
   test_actor_system_no_chain();
   return 0;
 }

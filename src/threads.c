@@ -24,21 +24,22 @@ void dna_thread_context_execute( dna_thread_context_t *context, void* (*func)(vo
   dna_mutex_unlock(context->mutex);
 }
 
-void dna_thread_context_exit(dna_thread_context_t *context) {
+void dna_thread_context_exit( dna_thread_context_t *context ) {
   // locked in context_execute
   //dna_mutex_lock(context->mutex);
   context->locked--;
   context->runstate = SHOULD_QUIT;
 }
 
-int dna_thread_context_should_exit(dna_thread_context_t *context) {
+int dna_thread_context_should_exit( dna_thread_context_t *context ) {
   return context->runstate == SHOULD_QUIT;
 }
 
-void dna_thread_context_destroy(dna_thread_context_t *context) {
+void dna_thread_context_destroy( dna_thread_context_t *context ) {
   if (context) {
-    free(context->thread);    
+    free( context->thread );
     dna_mutex_destroy(context->mutex);
+    free( context->mutex );
     free(context);
   }
 }

@@ -125,6 +125,7 @@ void delete_task( void *arg ) {
 void thread_pool_exit_all( thread_pool_t *pool ) {
   dna_mutex_lock( pool->mutex );
 
+  // clean up the tasks already in the queue
   fifo_each( pool->tasks, &delete_task );
   fifo_empty(pool->tasks);
 

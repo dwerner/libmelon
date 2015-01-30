@@ -3,6 +3,9 @@
 #include "message.h"
 #include "promise.h"
 #include "actor_system.h"
+#include "stdio.h"
+
+#define ACTOR_SYSTEM_LOG
 
 actor_system_t *actor_system_create(const char* name){
   actor_system_t *actor_system = (actor_system_t*) malloc( sizeof(actor_system_t) );

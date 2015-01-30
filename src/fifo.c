@@ -203,7 +203,9 @@ void fifo_each(fifo_t *fifo, void(*func)(void *) ) {
 // Clean up after and free a fifo
 void fifo_destroy( fifo_t *fifo ) {
   if (fifo) {
+#ifdef FIFO_LOG
     printf("destroying fifo %s...\n", fifo->name);
+#endif
     fifo_empty( fifo );
     dna_mutex_destroy( fifo->mutex );
     dna_cond_destroy( fifo->wait_pop );

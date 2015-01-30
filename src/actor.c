@@ -43,6 +43,14 @@ actor_t *actor_create( receive_func_p receive, const char *name) {
   return actor;
 }
 
+void actor_destroy(actor_t *actor) {
+#ifdef ACTOR_LOG
+  printf("destroying actor %s\n", actor->name);
+#endif
+  fifo_destroy( actor->mailbox );
+  free( actor );
+}
+
 void *actor_receive_task_internal(void *arg) {
   actor_t *actor = (actor_t*) arg;
   // will block the thread, so we should only execute when there's a message waiting
@@ -53,6 +61,7 @@ void *actor_receive_task_internal(void *arg) {
     promise_t *result = actor->receive( actor, msg );
     actor->livestate = ACTOR_IDLE;
     if (actor->state == ACTOR_DEAD) {
+      actor_system_message_put( actor->actor_system, msg );
       return result;
     }
 
@@ -98,6 +107,7 @@ void actor_kill( actor_t *actor, void(*cleanup)(void*) ) {
 #ifdef ACTOR_LOG
   printf("killing actor %s\n", actor->name);
 #endif
+  actor_system_t *actor_system = actor->actor_system;
   if (actor->state != ACTOR_DEAD) {
     actor->state = ACTOR_DEAD;
     actor_system_remove( actor->actor_system, actor );
@@ -106,14 +116,14 @@ void actor_kill( actor_t *actor, void(*cleanup)(void*) ) {
       fifo_each(actor->mailbox, cleanup);
     }
     // drain any remaining messages to the fifo...
-    actor_system_recycle_messages(actor->actor_system, actor->mailbox);
+    actor_system_recycle_messages( actor->actor_system, actor->mailbox );
   }
   // If the last actor has been killed, stop the actor system
-  if (fifo_is_empty(actor->actor_system->actors) ) {
+  if ( fifo_is_empty( actor_system->actors ) ) {
 #ifdef ACTOR_LOG
     printf("Actor system no longer has any actors within it, stopping...\n");
 #endif
-    actor_system_stop(actor->actor_system);
+    actor_system_stop( actor_system );
   }
 }
 
@@ -124,11 +134,3 @@ promise_t *actor_send(const actor_t *actor, message_t *message) {
   return message->promise;
 }
 
-void actor_destroy(actor_t *actor) {
-#ifdef ACTOR_LOG
-  printf("destroying actor %s\n", actor->name);
-#endif
-  actor_kill( actor, NULL );
-  fifo_empty( actor->mailbox );
-  fifo_destroy( actor->mailbox );
-}
