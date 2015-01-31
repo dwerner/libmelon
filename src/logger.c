@@ -3,11 +3,22 @@
 
 #include "logger.h"
 
-#define LABEL_LENGTH 6
-#define INFO_LABEL "INFO :"
-#define WARN_LABEL "WARN :"
-#define ERROR_LABEL "ERROR:"
-#define DEBUG_LABEL "DEBUG:"
+#define LABEL_LENGTH 5+6+5
+
+#define KNRM  "\x1B[0m"
+#define KRED  "\x1B[31m"
+#define KGRN  "\x1B[32m"
+#define KYEL  "\x1B[33m"
+#define KBLU  "\x1B[34m"
+#define KMAG  "\x1B[35m"
+#define KCYN  "\x1B[36m"
+#define KWHT  "\x1B[37m"
+#define RESET "\033[0m"
+
+#define INFO_LABEL KGRN"INFO :"RESET
+#define WARN_LABEL KYEL"WARN :"RESET
+#define ERROR_LABEL KRED"ERROR:"RESET
+#define DEBUG_LABEL KCYN"DEBUG:"RESET
 
 void log_label_internal(const char *label, const char *fmt, char *dest) {
   strncat( dest, label, LABEL_LENGTH);
