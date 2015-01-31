@@ -6,7 +6,7 @@
 #include <check.h>
 
 #include "melon.h"
-
+#include "logger.h"
 
 /***
 * TODO:
@@ -149,7 +149,7 @@ typedef enum {
   DONE = 2
 } message_type_t;
 
-#define TEST_MESSAGE_COUNT 100000
+#define TEST_MESSAGE_COUNT 10000000
 
 // Our user-defined "receive" method.
 // Must return: NULL or a promise_t -> a chain of promises or a resolved promise with a value.
@@ -289,14 +289,24 @@ void test_actor_system_no_chain() {
   actor_destroy( actor2 );
 }
 
+void test_logger() {
+  log_level = DEBUG;
+  dna_log(INFO, " -> info %s", "log level.");
+  dna_log(WARN, " -> warn %s", "log level.");
+  dna_log(ERROR, " !! %s", "log level.");
+  dna_log(DEBUG, " <><> %s", "log level.");
+}
+
 int main(int argc, char *argv[]) {
+
 //test_empty_fifo();
 //test_fifo();
 //test_empty_thread_pool();
 //test_busy_thread_pool();
 //test_few_tasks_thread_pool();
 //test_actor_system_promise_chain();
-  test_actor_system_no_chain();
+//  test_actor_system_no_chain();
+  test_logger();
   return 0;
 }
 

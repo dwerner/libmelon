@@ -34,7 +34,6 @@ execution_args_t *execution_args_create(thread_pool_t *pool, dna_thread_context_
 }
 
 // Actually execute work from the thread pool.
-inline
 void *task_execute( task_t *task ) {
   void* (*func)(void*) = task->func;
   void *arg = task->arg;

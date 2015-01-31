@@ -8,7 +8,8 @@ include_directories(/usr/include ${CMAKE_CURRENT_SOURCE_DIR}/include/)
 
 link_directories("/usr/lib")
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -pthread -Wall -pg")
+
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c11 -D _GNU_SOURCE -pthread -Wall -pg")
 set(SOURCE_FILES
 src/fifo.c
 src/threads.c
@@ -16,7 +17,8 @@ src/thread_pool.c
 src/actor.c
 src/promise.c
 src/actor_system.c
-src/message.c)
+src/message.c
+src/logger.c)
 
 add_library(melon ${SOURCE_FILES})
 target_include_directories (melon PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include/)
