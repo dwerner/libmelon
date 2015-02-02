@@ -12,13 +12,10 @@ enum log_level_t {
   DEBUG = 3
 };
 
-
 typedef enum log_level_t log_level_t;
-
 static log_level_t log_level = INFO;
 
 void dna_log( log_level_t level, const char *fmt, ... );
-
 
 
 #endif // _MELON_LOGGING_H_
