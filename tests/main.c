@@ -141,20 +141,18 @@ void test_few_tasks_thread_pool() {
   fifo_destroy( fifo );
 }
 
-
-// consumer side of actor
 typedef enum {
   PING = 0,
   PONG = 1,
   DONE = 2
 } message_type_t;
 
-#define TEST_MESSAGE_COUNT 10000000
+#define TEST_MESSAGE_COUNT 100000
 
-// Our user-defined "receive" method.
-// Must return: NULL or a promise_t -> a chain of promises or a resolved promise with a value.
-// An immediately resolved promise can be created with promise_resolved()
-// actor_send() returns a promise chain.
+/* Our user-defined "receive" method.
+   Must return: NULL or a promise_t -> a chain of promises or a resolved promise with a value.
+   An immediately resolved promise can be created with promise_resolved()
+   actor_send() returns a promise chain. */
 promise_t *actor_pong_receive( const actor_t *this, const message_t *msg ) {
   switch( msg->type ) {
     case PONG: {
@@ -173,14 +171,13 @@ promise_t *actor_pong_receive( const actor_t *this, const message_t *msg ) {
       actor_kill( (actor_t*)msg->from, NULL );
       return promise_resolved(response);
     };
-    // If this actor did not understand the message it was sent, it will return NULL,
-    // and the original promise will be resolved as NULL.
+    /* If this actor did not understand the message it was sent, it will return NULL,
+       and the original promise will be resolved as NULL. */
     default: break;
   };
   return NULL;
 }
 
-// actor_ping returns PONG or DONE
 promise_t *actor_ping_receive( const actor_t *this, const message_t *msg ) {
   switch( msg->type ) {
     case PING: {
@@ -207,25 +204,19 @@ void test_actor_system_promise_chain() {
   printf( "<-------------------- test_actor_system_promise_chain ---------------------\n");
   actor_system_t *actor_system = actor_system_create("stuff");
 
-  // create actors and add them to the system
   actor_t *actor1 = actor_create( &actor_ping_receive, "ping" );
   actor_t *actor2 = actor_create( &actor_pong_receive, "pong" );
   actor_system_add( actor_system, actor1 );
   actor_system_add( actor_system, actor2 );
 
-  // Create a message and send it to the actor, capturing the promise from
-  // this. Note that the actor passed to the message is spoofing a "from".
   message_t *message = actor_message_create( actor2, NULL, PING );
   message->id = 1;
   promise_t *promise = actor_send( actor1, message );
 
-  // Starts execution of the actor system - enqueueing receive evaluation on an internal thread pool
   actor_system_run( actor_system );
 
-  // block this thread until we can resolve the promise, in this case a chain of promises
   void *val = promise_get( promise );
   if (val) {
-    // it happens to be a message created by the actor and returned
     message_t *response = (message_t*)val;
     printf("resolved promise: %s\n", (response->type == DONE ? "PASSED" : "FAILED") );
   }
@@ -234,11 +225,9 @@ void test_actor_system_promise_chain() {
   actor_kill( actor2, NULL );
 
   thread_pool_join_all( actor_system->thread_pool );
-  // stop actor system, internal thread pool, task list, and clean up
   actor_system_destroy( actor_system );
 }
 
-// actor_ping returns PONG or DONE
 promise_t *actor_nochain_receive( const actor_t *this, const message_t *msg ) {
   switch( msg->type ) {
     case PING: {
@@ -272,7 +261,7 @@ promise_t *actor_nochain_receive( const actor_t *this, const message_t *msg ) {
 void test_actor_system_no_chain() {
   printf( "<-------------------- test_actor_system_nochain  ---------------------\n");
   actor_system_t *actor_system = actor_system_create("stuff");
-  // create actors and add them to the system
+  /* create actors and add them to the system */
   actor_t *actor1 = actor_create( &actor_nochain_receive, "ping" );
   actor_t *actor2 = actor_create( &actor_nochain_receive, "pong" );
   actor_system_add( actor_system, actor1 );
@@ -282,7 +271,7 @@ void test_actor_system_no_chain() {
   actor_send( actor1, message );
   actor_system_run( actor_system );
 
-  // immediately join, blocking the main thread until all work is complete.
+  /* immediately join, blocking the main thread until all work is complete. */
   thread_pool_join_all( actor_system->thread_pool );
   actor_system_destroy( actor_system );
   actor_destroy( actor1 );
@@ -290,23 +279,23 @@ void test_actor_system_no_chain() {
 }
 
 void test_logger() {
-  log_level = DEBUG;
-  dna_log(INFO, " -> info %s", "log level.");
+  dna_log(INFO, " -> info ");
   dna_log(WARN, " -> warn %s", "log level.");
   dna_log(ERROR, " !! %s", "log level.");
-  dna_log(DEBUG, " <><> %s", "log level.");
+  dna_log(DEBUG, " <><> %s and %i", "log level.", 42);
 }
 
+/* All in all, tests are currently passing, however there is a 
+   memory swelling issue when the actor tests are run */
 int main(int argc, char *argv[]) {
-
-//test_empty_fifo();
-//test_fifo();
-//test_empty_thread_pool();
-//test_busy_thread_pool();
-//test_few_tasks_thread_pool();
-//test_actor_system_promise_chain();
-//  test_actor_system_no_chain();
   test_logger();
+  test_empty_fifo();
+  test_fifo();
+  test_empty_thread_pool();
+  test_busy_thread_pool();
+  test_few_tasks_thread_pool();
+  test_actor_system_promise_chain();
+  test_actor_system_no_chain();
   return 0;
 }
 

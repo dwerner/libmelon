@@ -48,7 +48,6 @@ void actor_system_run(actor_system_t *actor_system) {
   fifo_each( actor_system->actors, &spawn_actor );
 }
 
-// Cleanup iterator used with fifo_each
 void destroy_actor( void *arg ) {
   actor_destroy((actor_t*)arg);
 }
@@ -58,27 +57,24 @@ void destroy_message( void *arg ) {
 }
 
 void actor_system_destroy(actor_system_t *actor_system) {
-  // clean up the actors themselves
   fifo_each( actor_system->actors, &destroy_actor );
   fifo_empty( actor_system->actors );
   fifo_destroy( actor_system->actors );
 
-  // clean up the message pool
   fifo_each( actor_system->message_pool, &destroy_message );
   fifo_empty( actor_system->message_pool );
   fifo_destroy( actor_system->message_pool );
 
-  // destroy the thread pool
   thread_pool_exit_all( actor_system->thread_pool );
   thread_pool_destroy( actor_system->thread_pool );
   free( actor_system );
 }
 
 message_t *actor_system_message_get( actor_system_t *actor_system, void *data, int type, const actor_t *from ) {
-  if (!fifo_is_empty(actor_system->message_pool)) {
+  if ( !fifo_is_empty( actor_system->message_pool ) ) {
     message_t* msg = (message_t*) fifo_pop( actor_system->message_pool );
     msg->type = type;
-    msg->id = 0;
+    /* purposely keeping the original alloc'd message->id */
     msg->data = data;
     msg->promise = NULL;
     msg->from = from;

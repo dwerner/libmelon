@@ -7,10 +7,11 @@
 #include "message.h"
 #include "actor.h"
 #include "actor_system.h"
+#include "logger.h"
 
 #define ACTOR_LOG
 
-// We MIGHT create a message, or recycle an old one.
+/* We MIGHT create a message, or recycle an old one. See actor_system_message_get()/.._put() */
 message_t *actor_message_create( const actor_t *actor, void *data, int type ) {
   if (actor->actor_system) {
     return actor_system_message_get( actor->actor_system, data, type, actor );

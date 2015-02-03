@@ -13,7 +13,7 @@ enum log_level_t {
 };
 
 typedef enum log_level_t log_level_t;
-static log_level_t log_level = INFO;
+#define GLOBAL_LOG_LEVEL DEBUG
 
 void dna_log( log_level_t level, const char *fmt, ... );
 
