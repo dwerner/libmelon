@@ -3,8 +3,7 @@
 #include <pthread.h>
 
 #include "threads.h"
-
-#define THREAD_CONTEXT_LOG
+#include "logger.h"
 
 dna_thread_context_t *dna_thread_context_create( long id ) {
   dna_thread_context_t *context = (dna_thread_context_t*) malloc(sizeof(dna_thread_context_t));
@@ -25,14 +24,16 @@ void dna_thread_context_execute( dna_thread_context_t *context, void* (*func)(vo
 }
 
 void dna_thread_context_exit( dna_thread_context_t *context ) {
-  // locked in context_execute
-  //dna_mutex_lock(context->mutex);
-  context->locked--;
+  dna_mutex_lock( context->mutex );
   context->runstate = SHOULD_QUIT;
+  dna_mutex_unlock( context->mutex );
 }
 
 int dna_thread_context_should_exit( dna_thread_context_t *context ) {
-  return context->runstate == SHOULD_QUIT;
+  dna_mutex_lock( context->mutex );
+  int quit = context->runstate == SHOULD_QUIT;
+  dna_mutex_unlock( context->mutex );
+  return quit;
 }
 
 void dna_thread_context_destroy( dna_thread_context_t *context ) {
@@ -47,14 +48,14 @@ void dna_thread_context_destroy( dna_thread_context_t *context ) {
 void dna_mutex_lock( pthread_mutex_t *mutex ) {
   int code = 0;
   while((code = pthread_mutex_lock( mutex ) )) {
-    printf("Unable to lock mutex (%i), trying again...\n", code);
+    dna_log(ERROR, "Unable to lock mutex (%i), trying again...", code);
   }
 }
 
 void dna_mutex_unlock( pthread_mutex_t *mutex ) {
   int code = 0;
   while((code = pthread_mutex_unlock( mutex ) )) {
-    printf("Unable to unlock mutex (%i), trying again...\n", code);
+    dna_log(ERROR, "Unable to unlock mutex (%i), trying again...", code);
   }
 }
 
@@ -65,28 +66,28 @@ void dna_cond_init( pthread_cond_t *cond ) {
 void dna_cond_timedwait( pthread_cond_t *cond, pthread_mutex_t *mutex, const struct timespec *abstime  ) {
   int code = 0;
   while ((code = pthread_cond_timedwait( cond, mutex, abstime) )) {
-    printf("cond_timedwait failed (%i), trying again...\n", code);
+    dna_log(ERROR, "cond_timedwait failed (%i), trying again...", code);
   }
 }
 
 void dna_cond_wait( pthread_cond_t *cond, pthread_mutex_t *mutex ) {
   int code = 0;
   while ((code = pthread_cond_wait( cond, mutex ) )) {
-    printf("cond_wait failed (%i), trying again...\n", code);
+    dna_log(ERROR, "cond_wait failed (%i), trying again...", code);
   }
 }
 
 void dna_cond_signal( pthread_cond_t *cond ) {
   int code = 0;
   while ((code = pthread_cond_signal( cond ) )) {
-    printf("Couldn't signal (%i), trying again...\n", code);
+    dna_log(ERROR, "Couldn't signal (%i), trying again...", code);
   }
 }
 
 void dna_cond_broadcast( pthread_cond_t *cond ) {
   int code = 0;
   while ((code = pthread_cond_broadcast( cond ))) {
-    printf("Couldn't broadcast (%i), trying again...\n", code);
+    dna_log(ERROR, "Couldn't broadcast (%i), trying again...", code);
   }
 }
 
@@ -94,9 +95,9 @@ void dna_cond_destroy( pthread_cond_t *cond ) {
   int code = 0;
   while( (code = pthread_cond_destroy( cond )) ) {
     if (code == 16 /*EBUSY*/) {
-      printf("Couldn't destroy cond variable - was EBUSY. Trying again...\n");
+      dna_log(ERROR, "Couldn't destroy cond variable - was EBUSY. Trying again...");
     } else {
-      printf("Couldn't destroy cond variable (code %i)\n", code);
+      dna_log(ERROR, "Couldn't destroy cond variable (code %i)", code);
     }
   }
 }
@@ -112,7 +113,7 @@ void dna_mutex_destroy( pthread_mutex_t *mutex ) {
   if (mutex) {
     int code = 0;
     while ((code = pthread_mutex_destroy( mutex ) )) {
-      printf("Unable to destroy mutex (%i), trying again...\n", code);
+      dna_log(ERROR, "Unable to destroy mutex (%i), trying again...", code);
     }
   }
 }
@@ -120,14 +121,14 @@ void dna_mutex_destroy( pthread_mutex_t *mutex ) {
 void dna_thread_cancel( pthread_t *thread ) {
   int i = 0;
   while( (i = pthread_cancel(*thread)) ){
-    printf("thread cancellation failed: %i, trying again...\n", i);
+    dna_log(DEBUG, "thread cancellation failed: %i, trying again...", i);
   }
 }
 
 void dna_thread_detach( pthread_t *thread ) {
   int i = 0;
   while( (i = pthread_detach(*thread)) ){
-    printf("thread detach failed: %i, trying again...\n", i);
+    dna_log(DEBUG, "thread detach failed: %i, trying again...", i);
   }
 }
 

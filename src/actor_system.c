@@ -18,7 +18,6 @@ actor_system_t *actor_system_create(const char* name){
 
 void actor_system_add(actor_system_t *actor_system, actor_t *actor) {
   actor->actor_system = actor_system;
-  actor->pool = actor_system->thread_pool;
   fifo_push( actor_system->actors, actor );
 }
 
@@ -39,7 +38,7 @@ void actor_system_remove( actor_system_t *actor_system, actor_t *actor ) {
 
 void spawn_actor( void *arg ) {
   actor_t *actor = (actor_t*)arg;
-  if (actor && actor->pool) {
+  if ( actor && actor->actor_system ) {
     actor_spawn(actor);
   }
 }
@@ -70,7 +69,7 @@ void actor_system_destroy(actor_system_t *actor_system) {
   free( actor_system );
 }
 
-message_t *actor_system_message_get( actor_system_t *actor_system, void *data, int type, const actor_t *from ) {
+message_t *actor_system_message_get( actor_system_t *actor_system, void *data, int type, actor_t *from ) {
   if ( !fifo_is_empty( actor_system->message_pool ) ) {
     message_t* msg = (message_t*) fifo_pop( actor_system->message_pool );
     msg->type = type;

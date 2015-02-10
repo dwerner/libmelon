@@ -21,7 +21,7 @@
 #define INFO_LABEL KGRN"INFO :"RESET
 #define WARN_LABEL KYEL"WARN :"RESET
 #define ERROR_LABEL KRED"ERROR:"RESET
-#define DEBUG_LABEL KCYN"DEBUG:"RESET
+#define DEBUG_LABEL KMAG"DEBUG:"RESET
 
 void log_label_internal(const char *label, const char *fmt, char *dest) {
   strncat( dest, label, LABEL_LENGTH );

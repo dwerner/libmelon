@@ -5,18 +5,21 @@
 
 #include "fifo.h"
 #include "threads.h"
+#include "logger.h"
 
-// TODO:
-// | Reusability |
-// - separate concurrency primitives from fifo_t into new concurrent_fifo_t
-//
-// | Optimizations |
-// - implement an optional size limit for fifo_t
-//   - add pthread_cond_t to fifo_t -> wait_room
-//   - push would then block if there is no room, and pop would signal that
-//
-// - implement a pre-allocated region of memory to start with for node_t instances
-//   - add recycling of node_t, rather than malloc + free each time.
+/* 
+ TODO:
+ | Reusability |
+ - separate concurrency primitives from fifo_t into new concurrent_fifo_t
+
+ | Optimizations |
+ - implement an optional size limit for fifo_t
+   - add pthread_cond_t to fifo_t -> wait_room
+   - push would then block if there is no room, and pop would signal that
+
+ - implement a pre-allocated region of memory to start with for node_t instances
+   - add recycling of node_t, rather than malloc + free each time.
+*/
 
 node_t *node_create( void *data ) {
   node_t *node = (node_t*) malloc( sizeof(node_t) );
@@ -25,8 +28,6 @@ node_t *node_create( void *data ) {
   return node;
 }
 
-
-// In progress - node caching
 node_t *node_cache_pop( fifo_t *fifo ) {
   if (fifo->node_cache) {
     node_t *item = fifo->node_cache;
@@ -51,7 +52,6 @@ void node_cache_push( fifo_t *fifo, node_t *node ) {
   }
 }
 
-
 void node_destroy( node_t *node ) {
   if (node) { free( node ); }
 }
@@ -69,7 +69,6 @@ fifo_t *fifo_create( const char *name, long max_size ) {
   return fifo;
 }
 
-// Push a new item into the fifo
 void fifo_push_internal( fifo_t *fifo, node_t *node ) {
   dna_mutex_lock( fifo->mutex );
   assert( node != NULL );
@@ -86,40 +85,40 @@ void fifo_push_internal( fifo_t *fifo, node_t *node ) {
   dna_mutex_unlock( fifo->mutex );
 }
 
-// Pop the first item in the fifo
 node_t *fifo_pop_internal( fifo_t *fifo ) {
   node_t *node = NULL;
   dna_mutex_lock( fifo->mutex );
   int cond_tries = 0;
   while ( fifo_is_empty(fifo) ) {
     cond_tries ++;
-#ifdef FIFO_DEBUG
-    printf("[%i, %lu] fifo %s still empty, waiting for signal\n",
+    dna_log(DEBUG, "[tries: %i, size:%lu] fifo '%s' still empty, waiting for signal.", 
         cond_tries, fifo->size, fifo->name );
-#endif
-    // unlock and then wait to be signalled - this is a cancellation point
-    // the challenge is: if we don't break out of this other than when
-    // there is an item in the queue, we will block for destroy...
-    // So we should push a NULL task.
+    /* unlock and then wait to be signalled - this is a cancellation point
+     the challenge is: if we don't break out of this other than when
+     there is an item in the queue, we will block for destroy...
+     So we should push a NULL task. */
     dna_cond_wait( fifo->wait_pop, fifo->mutex );
     if ( !fifo_is_empty(fifo) ) {
       break;
     } else {
-#ifdef FIFO_DEBUG
-      printf("[<%i>] predicate is still null! Spurious wakeup?\n", cond_tries);
-#endif
+      dna_log(DEBUG, "[<%i>] predicate is still null! Spurious wakeup?", cond_tries);
     }
   }
   assert( !fifo_is_empty(fifo) );
   node = fifo->first;
-  fifo->first = node->next; // even if it's NULL (end of the list)
+  fifo->first = node->next; /* even if it's NULL (end of the list) */
   fifo->size --;
   dna_mutex_unlock( fifo->mutex );
   return node;
 }
 
+/* FIXME: leads to a deadlock currently */
 int fifo_is_empty( fifo_t *fifo ) {
-  return !fifo || !fifo->first;
+  int empty = 0;
+  dna_mutex_lock( fifo->mutex );
+  empty = !fifo || !fifo->first;
+  dna_mutex_unlock( fifo->mutex );
+  return empty;
 }
 
 void fifo_push( fifo_t * fifo, void *item ) {
@@ -138,7 +137,6 @@ void *fifo_pop( fifo_t *fifo ) {
   }
 }
 
-// locks
 long fifo_count( fifo_t *fifo ) {
   long count = 0;
   dna_mutex_lock( fifo->mutex );
@@ -151,8 +149,8 @@ long fifo_count( fifo_t *fifo ) {
   return count;
 }
 
-// This needs to clean up the data for the
-// consumer, or allow a callback to do so
+/* TODO: This needs to clean up the data for the
+   consumer, or allow a callback to do so */
 void fifo_empty( fifo_t *fifo ) {
   dna_mutex_lock( fifo->mutex );
   while( !fifo_is_empty( fifo ) ) {
@@ -161,7 +159,7 @@ void fifo_empty( fifo_t *fifo ) {
       node_t *next = node->next;
       node_destroy(node);
       if (next) {
-        fifo->first = next; // even if it's NULL (end of the list)
+        fifo->first = next;
       } else {
         break;
       }
@@ -200,15 +198,12 @@ void fifo_each(fifo_t *fifo, void(*func)(void *) ) {
   dna_mutex_unlock(fifo->mutex);
 }
 
-// Clean up after and free a fifo
 void fifo_destroy( fifo_t *fifo ) {
   if (fifo) {
-#ifdef FIFO_LOG
-    printf("destroying fifo %s...\n", fifo->name);
-#endif
+    dna_log(DEBUG, "Destroying fifo %s...", fifo->name);
     fifo_empty( fifo );
-    dna_mutex_destroy( fifo->mutex );
     dna_cond_destroy( fifo->wait_pop );
+    dna_mutex_destroy( fifo->mutex );
     free( fifo->wait_pop );
     free( fifo->mutex );
     free( fifo );

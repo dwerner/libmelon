@@ -6,8 +6,7 @@
 #include "fifo.h"
 #include "thread_pool.h"
 #include "threads.h"
-
-#define THREAD_POOL_LOG
+#include "logger.h"
 
 typedef struct {
   void* (*func)(void*);
@@ -33,7 +32,7 @@ execution_args_t *execution_args_create(thread_pool_t *pool, dna_thread_context_
   return args;
 }
 
-// Actually execute work from the thread pool.
+/* Actually execute work from the thread pool. */
 void *task_execute( task_t *task ) {
   void* (*func)(void*) = task->func;
   void *arg = task->arg;
@@ -56,17 +55,11 @@ void task_destroy( task_t *task ) {
 * Until pthread_exit, pull a task_t out of the task queue and run it on our thread
 */
 void *execute_task_thread_internal( void *args ) {
-
   execution_args_t *yargs = (execution_args_t*) args;
   fifo_t *tasks = yargs->task_list;
   dna_thread_context_t *context = yargs->thread_context;
-
   free( yargs );
-
-#ifdef THREAD_POOL_LOG
-  printf("started execution of thread %lu\n", context->id);
-#endif
-
+  dna_log(DEBUG, "started execution of thread %lu", context->id);
   task_t *task = NULL;
   while ( !dna_thread_context_should_exit(context) &&
           (task = (task_t*) fifo_pop( tasks ) ) ) {
@@ -79,10 +72,7 @@ void *execute_task_thread_internal( void *args ) {
       break;
     }
   }
-
-#ifdef THREAD_POOL_LOG
-  printf("Execution of thread %lu has finished.\n", context->id );
-#endif
+  dna_log(DEBUG, "Execution of thread %lu has finished.", context->id );
   return NULL;
 }
 
@@ -123,21 +113,17 @@ void delete_task( void *arg ) {
 
 void thread_pool_exit_all( thread_pool_t *pool ) {
   dna_mutex_lock( pool->mutex );
-
-  // clean up the tasks already in the queue
   fifo_each( pool->tasks, &delete_task );
   fifo_empty(pool->tasks);
-
   fifo_each(
       pool->thread_queue,
       &kill_thread
   );
-
-  // push new "work" into the queue to unblock threads waiting on the list
+  /* push new "work" into the queue to unblock threads waiting on the list */
   int x = 0;
   for ( x = 0; x < fifo_count( pool->thread_queue ); x++) {
-    // We guard and don't execute NULL function pointers
-    // This merely meets the needs of the fifo for unblocking.
+    /* We guard and don't execute NULL function pointers
+       This merely meets the needs of the fifo for unblocking. */
     thread_pool_enqueue( pool, NULL, NULL );
   }
   dna_cond_signal( pool->wait );
@@ -154,29 +140,17 @@ int thread_context_is_running(const void * arg ) {
 * Each thread will call pthread_exit() once it has completed execution of it's current 'task_t'.
 */
 void thread_pool_join_all( thread_pool_t *pool ) {
-#ifdef THREAD_POOL_LOG
-  printf("joining thread pool:\n");
-#endif
+  dna_log(DEBUG, "Joining thread pool:");
   while ( !fifo_is_empty(pool->thread_queue) ) {
     dna_mutex_lock( pool->mutex );
-
     int threadsAreStillRunning = 0;
     while ( (threadsAreStillRunning = fifo_any( pool->thread_queue, &thread_context_is_running)) ) {
-#ifdef THREAD_POOL_LOG
-      printf("some threads are still running...%i\n", threadsAreStillRunning);
-#endif
-      //struct timespec time;
-      //time.tv_nsec = 30*1000000; // 30 millis (30m nanos)
-      //time.tv_sec = 0;
-      //dna_cond_timedwait( pool->wait, pool->mutex, &time );
+      dna_log(DEBUG, "Some threads are still running...%i", threadsAreStillRunning);
       dna_cond_wait( pool->wait, pool->mutex );
     }
-
     dna_thread_context_t *context = (dna_thread_context_t*) fifo_pop( pool->thread_queue );
-    if (context->runstate == RUNNING) { // not thread-safe
-#ifdef THREAD_POOL_LOG
-      printf("context is still running, placing back in the queue.\n");
-#endif
+    if (context->runstate == RUNNING) {
+      dna_log(WARN, "context is still running, placing back in the queue.");
       fifo_push( pool->thread_queue, context );
     }
     else {
@@ -188,48 +162,25 @@ void thread_pool_join_all( thread_pool_t *pool ) {
     }
     dna_mutex_unlock( pool->mutex );
   }
-#ifdef THREAD_POOL_LOG
-  printf("thread pool joined\n");
-#endif
+  dna_log(DEBUG, "Thread pool joined.");
 }
 
 void thread_pool_destroy( thread_pool_t *pool ) {
-  //TODO: look at how to use va_args, really -> then write a logger.
-#ifdef THREAD_POOL_LOG
-  printf("thread_pool_destroy\n");
-#endif
-
+  dna_log(DEBUG, "Inside thread_pool_destroy()");
   if ( pool ) {
-
-#ifdef THREAD_POOL_LOG
-    printf("telling threads to exit...\n");
-#endif
-
+    dna_log(DEBUG, "Telling threads to exit...");
     thread_pool_join_all(pool);
-
-#ifdef THREAD_POOL_LOG
-    printf("destroying execution context fifo...\n");
-#endif
-
+    dna_log(DEBUG, "Destroying execution context fifo...");
     fifo_destroy( pool->thread_queue );
     pool->thread_queue = NULL;
-
-#ifdef THREAD_POOL_LOG
-    printf("destroying tasks in fifo...\n");
-#endif
-
+    dna_log(DEBUG, "Destroying tasks in fifo...");
     while ( !fifo_is_empty( pool->tasks ) ) {
       task_t *task = (task_t*) fifo_pop( pool->tasks );
       task_destroy( task );
     }
-
     fifo_destroy( pool->tasks );
     pool->tasks = NULL;
-
-#ifdef THREAD_POOL_LOG
-    printf("freeing thread context pool \"%s\".\n", pool->name);
-#endif
-
+    dna_log(DEBUG, "Freeing thread context pool \"%s\".", pool->name);
     dna_mutex_destroy( pool->mutex );
     dna_cond_destroy( pool->wait );
     free(pool->mutex);

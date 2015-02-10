@@ -33,7 +33,7 @@ void *fifo_fill( void *nothing ) {
   for (i = 0; i < ELEMS; i++) {
     fifo_push( fifo, NULL );
 #ifdef VALUE_LOG
-    printf("<< added %i to value fifo\n", i);
+    dna_log(DEBUG, "<< added %i to value fifo", i);
 #endif
 
   }
@@ -43,7 +43,7 @@ void *fifo_fill( void *nothing ) {
 
 // test-helper: empty the fifo and see what we have in it
 void fifo_check() {
-  printf("emptying result fifo...\n");
+  dna_log(DEBUG, "emptying result fifo...");
   int ctr = 0;
   while( !fifo_is_empty(fifo) )  {
     void *val = fifo_pop( fifo );
@@ -55,11 +55,11 @@ void fifo_check() {
       ctr++;
     }
   }
-  printf("Counted %i elements popped from value queue\n", ctr);
+  dna_log(INFO, "Counted %i elements popped from value queue", ctr);
 }
 
 void sleep_for( long seconds ) {
-  printf("Sleeping for %lu", seconds);
+  dna_log(DEBUG, "Sleeping for %lu", seconds);
   struct timespec interval = {
       .tv_sec = (time_t) seconds,
       .tv_nsec = 0
@@ -68,7 +68,7 @@ void sleep_for( long seconds ) {
 }
 
 void test_empty_fifo() {
-  printf( "<-------------------- test_empty_fifo ---------------------\n");
+  dna_log(INFO,  "<-------------------- test_empty_fifo ---------------------");
   int j = 0;
   for (j = 0; j < 10; j++) {
     fifo_t *fifo = fifo_create(" <test fifo>", 0);
@@ -77,7 +77,7 @@ void test_empty_fifo() {
 }
 
 void test_fifo() {
-  printf( "<-------------------- test_fifo ---------------------\n");
+  dna_log(INFO,  "<-------------------- test_fifo ---------------------");
   int j = 0;
   for (j = 0; j < 10; j++) {
     fifo_t *fifo = fifo_create("<test fifo>", 0);
@@ -86,15 +86,15 @@ void test_fifo() {
 }
 
 void test_empty_thread_pool() {
-  printf( "<-------------------- test_empty_thread_pool ---------------------\n");
+  dna_log(INFO,  "<-------------------- test_empty_thread_pool ---------------------");
   int i = 0;
   for (i = 0; i < 10 ; i++ ) {
-    printf(">> --- cycle %i --- <<\n", i+1);
+    dna_log(INFO, ">> --- cycle %i --- <<", i+1);
     // global here, for all threads to share
     fifo = fifo_create("values", 0);
-    printf("starting thread pool\n");
+    dna_log(DEBUG, "starting thread pool");
     thread_pool_t *pool = thread_pool_create("main pool", 1);
-    printf("destroying thread pool\n");
+    dna_log(DEBUG, "destroying thread pool");
     thread_pool_exit_all(pool);
     thread_pool_destroy(pool);
     fifo_check();
@@ -103,41 +103,41 @@ void test_empty_thread_pool() {
 }
 
 void test_busy_thread_pool() {
-  printf( "<-------------------- test_busy_thread_pool  ---------------------\n");
+  dna_log(INFO,  "<-------------------- test_busy_thread_pool  ---------------------");
   fifo = fifo_create("<(busy_thread_pool) value fifo>", 0);
   thread_pool_t *pool = thread_pool_create("<busy thread pool>", 8); // should auto-determine thread count maybe?
-  printf("adding %i tasks to the queue...\n", ELEMS);
+  dna_log(DEBUG, "adding %i tasks to the queue...", ELEMS);
   int i = 0;
   for( i = 0; i < ELEMS; i++ ) {
     thread_pool_enqueue(pool, &fifo_fill, NULL);
   }
-  printf("waiting for threads to complete on their own...\n");
+  dna_log(DEBUG, "waiting for threads to complete on their own...");
   thread_pool_exit_all(pool);
   thread_pool_join_all( pool );
-  printf("destroying thread pool...\n");
+  dna_log(DEBUG, "destroying thread pool...");
   thread_pool_destroy( pool );
   fifo_check();
-  printf("destroying global value fifo.\n");
+  dna_log(DEBUG, "destroying global value fifo.");
   fifo_destroy( fifo );
 }
 
 void test_few_tasks_thread_pool() {
-  printf( "<-------------------- test_few_tasks_thread_pool  ---------------------\n");
+  dna_log(INFO,  "<-------------------- test_few_tasks_thread_pool  ---------------------");
   fifo = fifo_create("<(busy_thread_pool) value fifo>", 0);
   thread_pool_t *pool = thread_pool_create("<few tasks thread pool>", 8); // should auto-determine thread count maybe?
-  printf("adding %i tasks to the queue...\n", ELEMS);
+  dna_log(DEBUG, "adding %i tasks to the queue...", ELEMS);
   int i = 0;
   for( i = 0; i < 1; i++ ) {
     thread_pool_enqueue(pool, &fifo_fill, NULL);
   }
-  printf("waiting for threads to complete on their own...\n");
+  dna_log(DEBUG, "waiting for threads to complete on their own...");
   thread_pool_exit_all(pool);
   thread_pool_join_all( pool );
-  printf("destroying thread pool...\n");
+  dna_log(DEBUG, "destroying thread pool...");
   thread_pool_destroy( pool );
 
   fifo_check();
-  printf("destroying global value fifo.\n");
+  dna_log(DEBUG, "destroying global value fifo.");
   fifo_destroy( fifo );
 }
 
@@ -147,17 +147,17 @@ typedef enum {
   DONE = 2
 } message_type_t;
 
-#define TEST_MESSAGE_COUNT 100000
+#define TEST_MESSAGE_COUNT 10000
 
 /* Our user-defined "receive" method.
    Must return: NULL or a promise_t -> a chain of promises or a resolved promise with a value.
    An immediately resolved promise can be created with promise_resolved()
    actor_send() returns a promise chain. */
-promise_t *actor_pong_receive( const actor_t *this, const message_t *msg ) {
+promise_t *actor_pong_receive( actor_t *this, message_t *msg ) {
   switch( msg->type ) {
     case PONG: {
       if (msg->id % 100000 == 0) {
-        printf("%s-> PONG ->%s %lu\n", this->name, msg->from->name, msg->id);
+        dna_log(DEBUG, "%s-> PONG ->%s %lu", this->name, msg->from->name, msg->id);
       }
       message_t *response = actor_message_create(this, NULL, (msg->id < TEST_MESSAGE_COUNT ? PING : DONE) );
       response->id = msg->id + 1;
@@ -166,7 +166,7 @@ promise_t *actor_pong_receive( const actor_t *this, const message_t *msg ) {
     case DONE: {
       message_t *response = actor_message_create(this, NULL,  DONE );
       response->id = msg->id + 1;
-      printf("- received DONE : %s-> DONE ->%s %lu\n", this->name, msg->from->name, msg->id);
+      dna_log(DEBUG, "- received DONE : %s-> DONE ->%s %lu", this->name, msg->from->name, msg->id);
       actor_kill( (actor_t*)this, NULL );
       actor_kill( (actor_t*)msg->from, NULL );
       return promise_resolved(response);
@@ -178,11 +178,11 @@ promise_t *actor_pong_receive( const actor_t *this, const message_t *msg ) {
   return NULL;
 }
 
-promise_t *actor_ping_receive( const actor_t *this, const message_t *msg ) {
+promise_t *actor_ping_receive( actor_t *this, message_t *msg ) {
   switch( msg->type ) {
     case PING: {
       if (msg->id % 100000 == 0) {
-        printf("%s-> PING ->%s %lu\n", this->name, msg->from->name, msg->id);
+        dna_log(DEBUG, "%s-> PING ->%s %lu", this->name, msg->from->name, msg->id);
       }
       message_t *response = actor_message_create(this, NULL, (msg->id < TEST_MESSAGE_COUNT ? PONG : DONE) );
       response->id = msg->id + 1;
@@ -191,7 +191,7 @@ promise_t *actor_ping_receive( const actor_t *this, const message_t *msg ) {
     case DONE: {
       message_t *response = actor_message_create(this, NULL,  DONE );
       response->id = msg->id + 1;
-      printf("- received DONE : %s-> DONE ->%s %lu\n", this->name, msg->from->name, msg->id);
+      dna_log(DEBUG, "- received DONE : %s-> DONE ->%s %lu", this->name, msg->from->name, msg->id);
       return promise_resolved(response);
     };
     default: break;
@@ -201,7 +201,7 @@ promise_t *actor_ping_receive( const actor_t *this, const message_t *msg ) {
 
 
 void test_actor_system_promise_chain() {
-  printf( "<-------------------- test_actor_system_promise_chain ---------------------\n");
+  dna_log(DEBUG,  "<-------------------- test_actor_system_promise_chain ---------------------");
   actor_system_t *actor_system = actor_system_create("stuff");
 
   actor_t *actor1 = actor_create( &actor_ping_receive, "ping" );
@@ -218,7 +218,7 @@ void test_actor_system_promise_chain() {
   void *val = promise_get( promise );
   if (val) {
     message_t *response = (message_t*)val;
-    printf("resolved promise: %s\n", (response->type == DONE ? "PASSED" : "FAILED") );
+    dna_log(DEBUG, "resolved promise: %s", (response->type == DONE ? "PASSED" : "FAILED") );
   }
 
   actor_kill( actor1, NULL );
@@ -228,11 +228,11 @@ void test_actor_system_promise_chain() {
   actor_system_destroy( actor_system );
 }
 
-promise_t *actor_nochain_receive( const actor_t *this, const message_t *msg ) {
+promise_t *actor_nochain_receive( actor_t *this, message_t *msg ) {
   switch( msg->type ) {
     case PING: {
       if (msg->id % 100000 == 0) {
-        printf("%s-> PING ->%s %lu\n", this->name, msg->from->name, msg->id);
+        dna_log(DEBUG, "%s-> PING ->%s %lu", this->name, msg->from->name, msg->id);
       }
       message_t *response = actor_message_create(this, NULL, (msg->id < TEST_MESSAGE_COUNT ? PONG : DONE) );
       response->id = msg->id + 1;
@@ -241,7 +241,7 @@ promise_t *actor_nochain_receive( const actor_t *this, const message_t *msg ) {
     };
     case PONG: {
       if (msg->id % 100000 == 0) {
-        printf("%s-> PONG ->%s %lu\n", this->name, msg->from->name, msg->id);
+        dna_log(DEBUG, "%s-> PONG ->%s %lu", this->name, msg->from->name, msg->id);
       }
       message_t *response = actor_message_create(this, NULL, (msg->id < TEST_MESSAGE_COUNT ? PING : DONE) );
       response->id = msg->id + 1;
@@ -249,7 +249,7 @@ promise_t *actor_nochain_receive( const actor_t *this, const message_t *msg ) {
       return NULL;
     };
     case DONE: {
-      printf("- received DONE : %s-> DONE ->%s %lu\n", this->name, msg->from->name, msg->id);
+      dna_log(DEBUG, "- received DONE : %s-> DONE ->%s %lu", this->name, msg->from->name, msg->id);
       actor_kill( (actor_t*)this, NULL );
       actor_kill( (actor_t*)msg->from, NULL );
     };
@@ -259,7 +259,7 @@ promise_t *actor_nochain_receive( const actor_t *this, const message_t *msg ) {
 }
 
 void test_actor_system_no_chain() {
-  printf( "<-------------------- test_actor_system_nochain  ---------------------\n");
+  dna_log(INFO,  "<-------------------- test_actor_system_nochain  ---------------------");
   actor_system_t *actor_system = actor_system_create("stuff");
   /* create actors and add them to the system */
   actor_t *actor1 = actor_create( &actor_nochain_receive, "ping" );
@@ -288,12 +288,12 @@ void test_logger() {
 /* All in all, tests are currently passing, however there is a 
    memory swelling issue when the actor tests are run */
 int main(int argc, char *argv[]) {
-  test_logger();
-  test_empty_fifo();
-  test_fifo();
-  test_empty_thread_pool();
-  test_busy_thread_pool();
-  test_few_tasks_thread_pool();
+//test_logger();
+//test_empty_fifo();
+//test_fifo();
+//test_empty_thread_pool();
+//test_busy_thread_pool();
+//test_few_tasks_thread_pool();
   test_actor_system_promise_chain();
   test_actor_system_no_chain();
   return 0;
