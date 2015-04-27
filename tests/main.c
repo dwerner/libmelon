@@ -283,22 +283,23 @@ void test_logger() {
   dna_log(WARN, " -> warn %s", "log level.");
   dna_log(ERROR, " !! %s", "log level.");
   dna_log(DEBUG, " <><> %s and %i", "log level.", 42);
+  dna_log(VERBOSE, " verbose", "log level.", 99);
 }
 
 /* All in all, tests are currently passing, however there is a 
    memory swelling issue when the actor tests are run */
 int main(int argc, char *argv[]) {
-//test_logger();
-//test_empty_fifo();
-//test_fifo();
-//test_empty_thread_pool();
-//test_busy_thread_pool();
-//test_few_tasks_thread_pool();
+  dna_log(INFO, "starting tests...");
+
+  test_logger();
+  test_empty_fifo();
+  test_fifo();
+  test_empty_thread_pool();
+  test_busy_thread_pool();
+  test_few_tasks_thread_pool();
   test_actor_system_promise_chain();
   test_actor_system_no_chain();
+
+  dna_log(INFO, "tests complete");
   return 0;
 }
-
-
-
-

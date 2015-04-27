@@ -11,14 +11,12 @@ message_t *message_create(void *data, int type, actor_t *from) {
   message_t *message = (message_t*) malloc( sizeof(message_t) );
   message->data = data;
   message->type = type;
-  message->promise = NULL; // and why don't we create this here?
+  message->promise = NULL;
   message->from = from;
   message->id = ++messageId;
-
   if (message->id % 1000 == 0) {
     dna_log(DEBUG, "New message created. Reached new message id : %lu", message->id );
   }
-
   return message;
 }
 

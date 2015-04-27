@@ -91,7 +91,7 @@ node_t *fifo_pop_internal( fifo_t *fifo ) {
   int cond_tries = 0;
   while ( fifo_is_empty(fifo) ) {
     cond_tries ++;
-    dna_log(DEBUG, "[tries: %i, size:%lu] fifo '%s' still empty, waiting for signal.", 
+    dna_log(VERBOSE, "[tries: %i, size:%lu] fifo '%s' still empty, waiting for signal.", 
         cond_tries, fifo->size, fifo->name );
     /* unlock and then wait to be signalled - this is a cancellation point
      the challenge is: if we don't break out of this other than when
@@ -101,7 +101,7 @@ node_t *fifo_pop_internal( fifo_t *fifo ) {
     if ( !fifo_is_empty(fifo) ) {
       break;
     } else {
-      dna_log(DEBUG, "[<%i>] predicate is still null! Spurious wakeup?", cond_tries);
+      dna_log(VERBOSE, "[<%i>] predicate is still null! Spurious wakeup?", cond_tries);
     }
   }
   assert( !fifo_is_empty(fifo) );

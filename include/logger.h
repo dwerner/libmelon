@@ -10,11 +10,12 @@ enum log_level_t {
   ERROR = 1,
   INFO = 2,
   WARN = 3,
-  DEBUG = 4
+  DEBUG = 4,
+  VERBOSE = 5
 };
 
 typedef enum log_level_t log_level_t;
-#define GLOBAL_LOG_LEVEL WARN 
+#define GLOBAL_LOG_LEVEL VERBOSE 
 
 void dna_log( log_level_t level, const char *fmt, ... );
 

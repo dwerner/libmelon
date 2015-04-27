@@ -22,6 +22,7 @@
 #define WARN_LABEL KYEL"WARN :"RESET
 #define ERROR_LABEL KRED"ERROR:"RESET
 #define DEBUG_LABEL KMAG"DEBUG:"RESET
+#define VERBOSE_LABEL KCYN"VERBO:"RESET
 
 void log_label_internal(const char *label, const char *fmt, char *dest) {
   strncat( dest, label, LABEL_LENGTH );
@@ -56,6 +57,11 @@ void dna_log( log_level_t level, const char *fmt, ... ) {
         }
         case DEBUG: {
           log_label_internal(DEBUG_LABEL, fmt, dest);
+          vprintf(dest, args);
+          break;
+        }
+        case VERBOSE: {
+          log_label_internal(VERBOSE_LABEL, fmt, dest);
           vprintf(dest, args);
           break;
         }

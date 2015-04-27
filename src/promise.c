@@ -31,7 +31,7 @@ promise_t *promise_resolved( void *resolved_value ) {
 }
 
 /* Results in a Cons style list of fifos. [1,[2,[3,[4,[5,[value]]]]]]
- Would it be more optimal to simply chain all in the same list?
+ Would it be more optimal to simply chain all promises as elements in the same list?
  - TODO: evaluate this idea - expand the promise type and push each promise in order to the list
  - Notwithstanding aliasing issues, perhaps we could point each promise at the same fifo? */
 void promise_chain( promise_t *promise1, promise_t *promise2 ) {
@@ -50,7 +50,7 @@ void promise_set(promise_t *promise, void *val) {
 }
 
 /* Returns the value from the promise and destroys it.
-   Will actually call free( promise ); */
+   Will actually call promise_destroy() + free( promise ); */
 void *promise_get( promise_t *promise ) {
   value_t *value = (value_t*) fifo_pop( promise->fifo );
   promise_destroy( promise );

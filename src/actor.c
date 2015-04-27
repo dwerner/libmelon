@@ -39,7 +39,7 @@ actor_t *actor_create( receive_func_p receive, const char *name) {
   actor->state = ACTOR_DORMANT;
   actor->livestate = ACTOR_IDLE;
   actor->actor_system = NULL;
-  dna_log(DEBUG, "Created actor %s\n", actor->name);
+  dna_log(DEBUG, "Created actor %s", actor->name);
   return actor;
 }
 
@@ -62,6 +62,20 @@ void actor_destroy(actor_t *actor) {
  *  - An actor can be 'killed' with actor_kill(), so we need to watch for that state,
  *    and stop the actor from processing more messages. Killing an actor also stops it
  *    from being scheduled in the thread_pool.
+ *  - Trouble: 
+ *    When code sends an actor a message, a promise is created to represent the eventual
+ *    value that will be generated. This value might be one of three things:
+ *      a. NULL : simply represent the completion of the work triggered by the message.
+ *      b. 'resolved' promise : a promise with .state == PROMISE_RESOLVED
+ *      c. 'chained' promise : a promise with .state == PROMISE_CHAINED
+ *        - This last option is special: It is a series of 'chained' promises (currently 
+ *          implemented as nested fifos) and always ends in a 'resolved' promise. The 
+ *          purpose of this type of promise is to allow sequential chaining;
+ *          i.e. much work to be completed that will eventually return a promise. 
+ *
+ *          Perhaps this is better implemented as a single promise that the user is 
+ *          forced to pass along with their messages. As a chain of nested fifos, this grows
+ *          to a pretty heavy structure in our memory space.
  *
  * Implementation notes:
  *  - A memory optimization: we recycle the messages used and place them in a pool.
@@ -83,11 +97,15 @@ void *actor_receive_task_internal(void *arg) {
     }
 
     if ( !result ) {
+      /* when receive returns NULL, a choice has been made by the user to
+       * not use promises. They return NULL because it's more meaningful
+       * than a forcing them to return a value, and placing that in a promise.
+       * We still resolve this as a value to the caller, as NULL will simply
+       * represent completion of the task behind the message this actor received. */
       promise_set( msg->promise, NULL );
     } else {
       if (result->state == PROMISE_RESOLVED) {
-        /* If we got a resolved promise (no fifo, just a void*)
-           we resolve the promise and unblock the caller. */
+        /* If we got a resolved promise we resolve the promise and unblock the caller. */
         promise_set( msg->promise, result->resolution );
       } else if (result->state == PROMISE_WAITING) {
         /* If a promise is still pending, it can only be chained.
@@ -110,6 +128,9 @@ void *actor_receive_task_internal(void *arg) {
   return NULL;
 }
 
+/*
+ * Actors are scheduled via a thread_queue, this kicks off scheduling.
+ */
 void actor_spawn( actor_t *actor ) {
   dna_log(DEBUG, "Spawning actor %s.", actor->name);
   if (actor->state == ACTOR_DORMANT) {
@@ -140,7 +161,7 @@ void actor_kill( actor_t *actor, void(*cleanup)(void*) ) {
   if (actor->state != ACTOR_DEAD) {
     actor->state = ACTOR_DEAD;
     actor_system_remove( actor->actor_system, actor );
-    if (cleanup) {
+    if ( cleanup ) {
       fifo_each(actor->mailbox, cleanup);
     }
     /* Drain any remaining messages to the pool... */
