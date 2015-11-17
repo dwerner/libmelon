@@ -1,4 +1,4 @@
-# Melon Libraries #
+# libmelon # 
 
 An actor model library in plain C.
 
@@ -56,25 +56,25 @@ promise_t *actor_pong_receive( actor_t *this, message_t *msg ) {
 ...
   /* useage example (main) */
 
-	/* Create an actor system */
+  /* Create an actor system */
   actor_system_t *actor_system = actor_system_create("stuff");
 
-	/* create a couple of actors */
+  /* create a couple of actors */
   actor_t *actor1 = actor_create( &actor_ping_receive, "ping" );
   actor_t *actor2 = actor_create( &actor_pong_receive, "pong" );
 
-	/* add those actors to the system */
+  /* add those actors to the system */
   actor_system_add( actor_system, actor1 );
   actor_system_add( actor_system, actor2 );
 
-	/* create a message to send to one of the actors */
+  /* create a message to send to one of the actors */
   message_t *message = actor_message_create( actor2, NULL, PING );
   message->id = 1;
 
-	/* 'send' a message to one of the actors. This operation's result is a 'promise', essentially a blocking queue with a single element. */
+  /* 'send' a message to one of the actors. This operation's result is a 'promise', essentially a blocking queue with a single element. */
   promise_t *promise = actor_send( actor1, message );
 
-	/* start processing in the actor system */
+  /* start processing in the actor system */
   actor_system_run( actor_system );
 
   /* block this thread (the main thread) until the promise can be resolved */
@@ -84,11 +84,11 @@ promise_t *actor_pong_receive( actor_t *this, message_t *msg ) {
     dna_log(DEBUG, "resolved promise: %s", (response->type == DONE ? "PASSED" : "FAILED") );
   }
 
-	/* kill off the running actors (optional) */
+  /* kill off the running actors (optional) */
   actor_kill( actor1, NULL );
   actor_kill( actor2, NULL );
 
-	/* destroy the actor system */
+  /* destroy the actor system */
   actor_system_destroy( actor_system );
 ```
 
