@@ -1,8 +1,8 @@
 # Melon Libraries #
 
-### What is this repository for? ###
+An actor model library in plain C.
 
-* Not much at the moment.
+This is a bit of a play-project, meant to be a return to OOP-style C (C11 in this case). It represents my forays into developing a coherent style in C, learning pthreads, and developing my own datastructures to represent the library's primitives.
 
 # Build instructions
 
