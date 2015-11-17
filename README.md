@@ -1,4 +1,4 @@
-# libmelon # 
+# libmelon
 
 An actor model library in plain C.
 
